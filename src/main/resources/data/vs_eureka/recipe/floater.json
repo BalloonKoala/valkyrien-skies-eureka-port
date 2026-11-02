@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " # ",
+    "#P#",
+    " # "
+  ],
+  "key": {
+    "#": "minecraft:string",
+    "P": "#minecraft:planks"
+  },
+  "result": {
+    "count": 16,
+    "id": "vs_eureka:floater"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "parent": "vs_eureka:block/wireless_button_inventory",
+  "textures": {
+    "texture": "minecraft:block/jungle_planks"
+  }
+}

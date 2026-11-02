@@ -1,0 +1,183 @@
+plugins {
+    id "net.fabricmc.fabric-loom" version "1.19.3"
+    id "org.jetbrains.kotlin.jvm" version "2.4.21"
+}
+
+version = project.mod_version
+group = project.maven_group
+base { archivesName = project.archives_base_name }
+
+// Not part of the source, see libs/README.md
+def coreBundle = file("libs/vs-core-bundle-cf208d8b56.jar")
+if (!coreBundle.exists()) coreBundle = file("../libs/vs-core-bundle-cf208d8b56.jar")
+
+repositories {
+    mavenCentral()
+    maven { url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/" }
+    exclusiveContent {
+        forRepository { maven { url = "https://api.modrinth.com/maven" } }
+        filter { includeGroup "maven.modrinth" }
+    }
+}
+
+loom {
+    accessWidenerPath = file("src/main/resources/valkyrienskies-common.accesswidener")
+    // The annotation processor checks every mixin target at compile time
+    runs {
+        server {
+            vmArgs "-Xmx3G"
+            def selfTest = System.getenv("VS_SELFTEST")
+            if (selfTest) vmArg "-Dvs.selfTest=${selfTest}"
+            if (System.getenv("VS_SERVER_AUDIT") != null) vmArgs "-Dvs.mixinAudit=true", "-Dmixin.debug.countInjections=true"
+        }
+        client {
+            vmArgs "-Xmx3G"
+        }
+        clientTest {
+            client()
+            vmArgs "-Xmx3G", "-Dfabric.client.gametest", "-Dfabric.client.gametest.disableNetworkSynchronizer=true"
+            runDir System.getenv("VS_TEST_RUNDIR") ?: "run-clienttest"
+            if (System.getenv("VS_TEST_NAME") != null) programArgs "--username", System.getenv("VS_TEST_NAME")
+        }
+        audit {
+            client()
+            vmArgs "-Xmx3G", "-Dvs.mixinAudit=true", "-Dmixin.debug.countInjections=true"
+            runDir "run-audit"
+        }
+    }
+}
+
+def prodTest = System.getenv("VS_PRODTEST") != null
+
+configurations {
+    productionRuntimeMods
+}
+
+dependencies {
+    productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    // Bundled inside the jar so players do not need to install them separately
+    implementation(include("net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"))
+    implementation(include("fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${project.fcap_version}"))
+    implementation(include("com.fasterxml:classmate:1.5.1"))
+
+    // The physics core and its libraries, taken unchanged from Valkyrien Skies 2.4.11
+    implementation files(coreBundle)
+
+    annotationProcessor "io.github.llamalad7:mixinextras-common:0.5.0"
+    compileOnly "io.github.llamalad7:mixinextras-common:0.5.0"
+
+    compileOnly "maven.modrinth:sodium:${project.sodium_version}"
+    if (System.getenv("VS_TEST_SODIUM") != null) localRuntime "maven.modrinth:sodium:${project.sodium_version}"
+    // Optional compatibility targets
+    compileOnly("maven.modrinth:cc-tweaked:tKLY4fAR") { transitive = false }
+    compileOnly("maven.modrinth:bluemap:TROfpX7m") { transitive = false }
+    compileOnly("maven.modrinth:entity-model-features:vF6qLXsA") { transitive = false }
+    compileOnly("maven.modrinth:entitytexturefeatures:OOEycXyN") { transitive = false }
+    compileOnly("maven.modrinth:sound-physics-remastered:gA7nKz5g") { transitive = false }
+    compileOnly("maven.modrinth:echo-chest:OjnNXGkz") { transitive = false }
+    compileOnly("maven.modrinth:iris:vTN4NRGW") { transitive = false }
+    compileOnly("maven.modrinth:jei:1Uzmw8Mr") { transitive = false }
+    if (System.getenv("VS_TEST_JEI") != null) {
+        localRuntime("maven.modrinth:jei:1Uzmw8Mr") { transitive = false }
+        localRuntime("maven.modrinth:just-enough-resources-jer:QbBTuobs") { transitive = false }
+    }
+    if (System.getenv("VS_AUDIT_COMPAT") != null) {
+        localRuntime("maven.modrinth:sodium:${project.sodium_version}")
+        localRuntime("maven.modrinth:cc-tweaked:tKLY4fAR") { transitive = false }
+        localRuntime("maven.modrinth:entity-model-features:vF6qLXsA") { transitive = false }
+        localRuntime("maven.modrinth:entitytexturefeatures:OOEycXyN") { transitive = false }
+        localRuntime("maven.modrinth:sound-physics-remastered:gA7nKz5g") { transitive = false }
+        localRuntime("maven.modrinth:echo-chest:OjnNXGkz") { transitive = false }
+        localRuntime("maven.modrinth:iris:vTN4NRGW") { transitive = false }
+        localRuntime("maven.modrinth:puzzles-lib:b1UA02v8") { transitive = false }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release = project.java_version as Integer
+    options.compilerArgs += ["-Xmaxerrs", "5000"]
+}
+
+kotlin {
+    jvmToolchain(project.java_version as Integer)
+    compilerOptions {
+        // Inline type checks, the indy form loads every class in a when up front, which breaks client classes on servers
+        freeCompilerArgs.addAll("-Xjvm-default=all", "-Xsuppress-version-warnings", "-Xwhen-expressions=inline")
+        suppressWarnings = true
+    }
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(project.java_version as Integer)
+}
+
+processResources {
+    inputs.property "version", project.version
+    def clientTest = prodTest || gradle.startParameter.taskNames.any { it.toLowerCase().contains("clienttest") }
+    inputs.property "clientTest", clientTest
+    filesMatching("fabric.mod.json") {
+        filter {
+            it.replace('${version}', project.version.toString())
+                .replace('DEV_ENTRYPOINT', clientTest ? ',\n    "fabric-client-gametest": ["org.valkyrienskies.mod.dev.DevClientTest"]' : '')
+        }
+    }
+}
+
+jar {
+    // Development self test, never shipped
+    if (!prodTest) exclude "org/valkyrienskies/mod/dev/**"
+    from(zipTree(coreBundle)) {
+        exclude "META-INF/MANIFEST.MF", "META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA"
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+    from("LICENSE-VALKYRIEN-SKIES.txt")
+    from("LICENSE-EUREKA.txt")
+    from("LICENSE-GPL-3.0.txt")
+}
+
+// Proves that adding the mod to an existing world changes nothing in it, see src/worldtest. The world gets made with
+// only Fabric installed, then gets opened with the jar exactly as it ships.
+sourceSets {
+    worldtest {
+        compileClasspath += sourceSets.main.compileClasspath
+    }
+}
+
+tasks.register("worldTestJar", Jar) {
+    from(sourceSets.worldtest.output)
+    archiveFileName = "worldtest.jar"
+    destinationDirectory = layout.buildDirectory.dir("worldtest")
+}
+
+tasks.register("worldTestVanilla", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
+    useXVFB = false
+    runDir = layout.projectDirectory.dir("run-worldtest-vanilla")
+    mods.setFrom(configurations.productionRuntimeMods, tasks.named("worldTestJar"))
+    jvmArgs.addAll("-Xmx3G", "-Dfabric.client.gametest", "-Dfabric.client.gametest.disableNetworkSynchronizer=true")
+}
+
+tasks.register("worldTestModded", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
+    useXVFB = false
+    runDir = layout.projectDirectory.dir("run-worldtest-modded")
+    mods.setFrom(configurations.productionRuntimeMods, tasks.named("worldTestJar"), tasks.named("jar"))
+    jvmArgs.addAll("-Xmx3G", "-Dfabric.client.gametest", "-Dfabric.client.gametest.disableNetworkSynchronizer=true")
+}
+
+// Runs the built jar on a real Fabric install, with the development test classes when VS_PRODTEST is set
+tasks.register("prodClientTest", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
+    useXVFB = false
+    if (System.getenv("VS_TEST_RUNDIR") != null) runDir = layout.projectDirectory.dir(System.getenv("VS_TEST_RUNDIR"))
+    if (System.getenv("VS_TEST_NAME") != null) programArgs.addAll("--username", System.getenv("VS_TEST_NAME"))
+    mods.from(configurations.productionRuntimeMods)
+    jvmArgs.addAll("-Xmx3G", "-Dfabric.client.gametest", "-Dfabric.client.gametest.disableNetworkSynchronizer=true")
+}
+
+tasks.register("prodServer", net.fabricmc.loom.task.prod.ServerProductionRunTask) {
+    mods.from(configurations.productionRuntimeMods)
+    if (System.getenv("VS_SELFTEST") != null) jvmArgs.add("-Dvs.selfTest=" + System.getenv("VS_SELFTEST"))
+}

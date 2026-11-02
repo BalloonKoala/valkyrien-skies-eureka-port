@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "/O/",
+    "OgO",
+    "/_/"
+  ],
+  "key": {
+    "/": "minecraft:stick",
+    "O": "minecraft:jungle_fence",
+    "g": "minecraft:gold_ingot",
+    "_": "minecraft:jungle_slab"
+  },
+  "result": {
+    "count": 1,
+    "id": "vs_eureka:jungle_ship_helm"
+  },
+  "group": "ship_helm"
+}

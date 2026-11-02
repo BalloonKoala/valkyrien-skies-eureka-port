@@ -1,0 +1,24 @@
+{
+  "required": true,
+  "package": "org.valkyrienskies.mod.fabric.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "plugin": "org.valkyrienskies.mod.fabric.mixin.ValkyrienSkiesFabricMixinPlugin",
+  "mixins": [
+    "entity.MixinContainerEntity",
+    "feature.explosions.ClipContextMixin",
+    "feature.fix_tp_ships_cross_dimension.MixinLevelChunk",
+    "feature.shipyard_entities.MixinPersistentEntitySectionManager",
+    "feature.water_in_ships_entity.MixinEntityFluidInteraction",
+    "server.network.MixinServerGamePacketListenerImpl",
+    "world.level.block.FireMixin"
+  ],
+  "client": [
+    "client.render.MixinLevelRenderer",
+    "compat.emf.MixinEMFAnimationEntityContext",
+    "compat.sodium.MixinSodiumWorldRenderer"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "minVersion": "0.8"
+}

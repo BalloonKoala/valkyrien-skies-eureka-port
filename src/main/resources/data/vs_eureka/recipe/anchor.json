@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "#i#",
+    " i ",
+    "iIi"
+  ],
+  "key": {
+    "#": "minecraft:lead",
+    "i": "minecraft:iron_ingot",
+    "I": "minecraft:iron_block"
+  },
+  "result": {
+    "count": 1,
+    "id": "vs_eureka:anchor"
+  }
+}

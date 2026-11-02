@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "/O/",
+    "OgO",
+    "/_/"
+  ],
+  "key": {
+    "/": "minecraft:stick",
+    "O": "minecraft:acacia_fence",
+    "g": "minecraft:gold_ingot",
+    "_": "minecraft:acacia_slab"
+  },
+  "result": {
+    "count": 1,
+    "id": "vs_eureka:acacia_ship_helm"
+  },
+  "group": "ship_helm"
+}

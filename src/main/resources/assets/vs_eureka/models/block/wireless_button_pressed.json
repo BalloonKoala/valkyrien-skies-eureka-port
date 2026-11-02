@@ -1,0 +1,147 @@
+{
+  "textures": {
+    "particle": "#texture",
+    "rim": "vs_eureka:block/wireless_button_rim_on"
+  },
+  "elements": [
+    {
+      "from": [
+        4,
+        0,
+        5
+      ],
+      "to": [
+        12,
+        0.75,
+        11
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            4,
+            5,
+            12,
+            11
+          ],
+          "texture": "#rim",
+          "cullface": "down"
+        },
+        "up": {
+          "uv": [
+            4,
+            5,
+            12,
+            11
+          ],
+          "texture": "#rim"
+        },
+        "north": {
+          "uv": [
+            4,
+            15.25,
+            12,
+            16
+          ],
+          "texture": "#rim"
+        },
+        "south": {
+          "uv": [
+            4,
+            15.25,
+            12,
+            16
+          ],
+          "texture": "#rim"
+        },
+        "west": {
+          "uv": [
+            5,
+            15.25,
+            11,
+            16
+          ],
+          "texture": "#rim"
+        },
+        "east": {
+          "uv": [
+            5,
+            15.25,
+            11,
+            16
+          ],
+          "texture": "#rim"
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "from": [
+        5,
+        0,
+        6
+      ],
+      "to": [
+        11,
+        1.25,
+        10
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            5,
+            6,
+            11,
+            10
+          ],
+          "texture": "#texture",
+          "cullface": "down"
+        },
+        "up": {
+          "uv": [
+            5,
+            6,
+            11,
+            10
+          ],
+          "texture": "#texture"
+        },
+        "north": {
+          "uv": [
+            5,
+            14.75,
+            11,
+            16
+          ],
+          "texture": "#texture"
+        },
+        "south": {
+          "uv": [
+            5,
+            14.75,
+            11,
+            16
+          ],
+          "texture": "#texture"
+        },
+        "west": {
+          "uv": [
+            6,
+            14.75,
+            10,
+            16
+          ],
+          "texture": "#texture"
+        },
+        "east": {
+          "uv": [
+            6,
+            14.75,
+            10,
+            16
+          ],
+          "texture": "#texture"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "valkyrienskies:item/physics_entity_creator"
+  }
+}

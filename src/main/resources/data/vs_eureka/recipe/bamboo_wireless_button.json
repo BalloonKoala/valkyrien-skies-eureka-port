@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "redstone",
+  "group": "wireless_button",
+  "ingredients": [
+    "minecraft:bamboo_button",
+    "minecraft:redstone",
+    "minecraft:iron_ingot"
+  ],
+  "result": {
+    "count": 1,
+    "id": "vs_eureka:bamboo_wireless_button"
+  }
+}

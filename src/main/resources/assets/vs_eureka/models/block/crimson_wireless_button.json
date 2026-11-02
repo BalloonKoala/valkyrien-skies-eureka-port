@@ -1,0 +1,6 @@
+{
+  "parent": "vs_eureka:block/wireless_button",
+  "textures": {
+    "texture": "minecraft:block/crimson_planks"
+  }
+}

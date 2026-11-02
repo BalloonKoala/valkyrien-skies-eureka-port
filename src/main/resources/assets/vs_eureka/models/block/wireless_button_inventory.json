@@ -1,0 +1,145 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "particle": "#texture",
+    "rim": "vs_eureka:block/wireless_button_rim"
+  },
+  "elements": [
+    {
+      "from": [
+        4,
+        5,
+        7.5
+      ],
+      "to": [
+        12,
+        11,
+        8.5
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            4,
+            7.5,
+            12,
+            8.5
+          ],
+          "texture": "#rim"
+        },
+        "up": {
+          "uv": [
+            4,
+            7.5,
+            12,
+            8.5
+          ],
+          "texture": "#rim"
+        },
+        "north": {
+          "uv": [
+            4,
+            5,
+            12,
+            11
+          ],
+          "texture": "#rim"
+        },
+        "south": {
+          "uv": [
+            4,
+            5,
+            12,
+            11
+          ],
+          "texture": "#rim"
+        },
+        "west": {
+          "uv": [
+            7.5,
+            5,
+            8.5,
+            11
+          ],
+          "texture": "#rim"
+        },
+        "east": {
+          "uv": [
+            7.5,
+            5,
+            8.5,
+            11
+          ],
+          "texture": "#rim"
+        }
+      }
+    },
+    {
+      "from": [
+        5,
+        6,
+        6.5
+      ],
+      "to": [
+        11,
+        10,
+        9.5
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            5,
+            6.5,
+            11,
+            9.5
+          ],
+          "texture": "#texture"
+        },
+        "up": {
+          "uv": [
+            5,
+            6.5,
+            11,
+            9.5
+          ],
+          "texture": "#texture"
+        },
+        "north": {
+          "uv": [
+            5,
+            6,
+            11,
+            10
+          ],
+          "texture": "#texture"
+        },
+        "south": {
+          "uv": [
+            5,
+            6,
+            11,
+            10
+          ],
+          "texture": "#texture"
+        },
+        "west": {
+          "uv": [
+            6.5,
+            6,
+            9.5,
+            10
+          ],
+          "texture": "#texture"
+        },
+        "east": {
+          "uv": [
+            6.5,
+            6,
+            9.5,
+            10
+          ],
+          "texture": "#texture"
+        }
+      }
+    }
+  ]
+}

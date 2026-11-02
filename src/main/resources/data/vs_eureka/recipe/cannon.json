@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "pattern": [
+    "III",
+    "IDG",
+    "PPP"
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "D": "minecraft:dispenser",
+    "G": "minecraft:gunpowder",
+    "P": "#minecraft:planks"
+  },
+  "result": {
+    "count": 1,
+    "id": "vs_eureka:cannon"
+  }
+}

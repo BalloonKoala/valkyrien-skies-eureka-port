@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "valkyrienskies",
+  "version": "${version}",
+  "name": "Valkyrien Skies 2 + Eureka",
+  "description": "Moving blocks with physics :) Combined build of Valkyrien Skies 2.4.11 and VS Eureka 1.6.4. Unofficial port, not supported by the Valkyrien Skies team.",
+  "authors": ["Tri0de", "Rubydesic", "ewoudje", "millennIumAMbiguity"],
+  "contributors": ["Copper", "Anarava", "VS Discord"],
+  "contact": {
+    "homepage": "https://discord.gg/nbZ9nH3aBb",
+    "issues": "https://discord.gg/nbZ9nH3aBb"
+  },
+  "license": ["LGPL-3.0-only", "Apache-2.0"],
+  "icon": "assets/valkyrienskies/icon.png",
+  "environment": "*",
+  "provides": ["vs_eureka"],
+  "entrypoints": {
+    "main": [
+      "org.valkyrienskies.mod.fabric.common.ValkyrienSkiesModFabric",
+      "org.valkyrienskies.eureka.fabric.EurekaModFabric"
+    ],
+    "client": ["org.valkyrienskies.eureka.fabric.EurekaModFabric$Client"],
+    "preLaunch": ["org.valkyrienskies.eureka.fabric.ValkyrienPreLaunch"]DEV_ENTRYPOINT
+  },
+  "mixins": [
+    "valkyrienskies-common.mixins.json",
+    "valkyrienskies-fabric.mixins.json",
+    "vs_eureka-common.mixins.json",
+    "vs_eureka.mixins.json"
+  ],
+  "accessWidener": "valkyrienskies-common.accesswidener",
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  },
+  "breaks": {
+    "sodium": "<0.9.0"
+  },
+  "custom": {
+    "lithium:options": {
+      "mixin.ai.poi": false
+    }
+  }
+}

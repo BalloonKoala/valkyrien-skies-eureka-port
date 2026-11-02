@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "/O/",
+    "OgO",
+    "/_/"
+  ],
+  "key": {
+    "/": "minecraft:stick",
+    "O": "minecraft:spruce_fence",
+    "g": "minecraft:gold_ingot",
+    "_": "minecraft:spruce_slab"
+  },
+  "result": {
+    "count": 1,
+    "id": "vs_eureka:spruce_ship_helm"
+  },
+  "group": "ship_helm"
+}

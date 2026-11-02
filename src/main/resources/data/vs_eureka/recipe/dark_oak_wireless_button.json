@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "redstone",
+  "group": "wireless_button",
+  "ingredients": [
+    "minecraft:dark_oak_button",
+    "minecraft:redstone",
+    "minecraft:iron_ingot"
+  ],
+  "result": {
+    "count": 1,
+    "id": "vs_eureka:dark_oak_wireless_button"
+  }
+}

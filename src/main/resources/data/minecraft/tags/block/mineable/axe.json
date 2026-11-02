@@ -1,0 +1,19 @@
+{
+  "replace": false,
+  "values": [
+    "vs_eureka:floater",
+    "#vs_eureka:ship_helms",
+    "vs_eureka:oak_wireless_button",
+    "vs_eureka:spruce_wireless_button",
+    "vs_eureka:birch_wireless_button",
+    "vs_eureka:jungle_wireless_button",
+    "vs_eureka:acacia_wireless_button",
+    "vs_eureka:dark_oak_wireless_button",
+    "vs_eureka:mangrove_wireless_button",
+    "vs_eureka:cherry_wireless_button",
+    "vs_eureka:pale_oak_wireless_button",
+    "vs_eureka:bamboo_wireless_button",
+    "vs_eureka:crimson_wireless_button",
+    "vs_eureka:warped_wireless_button"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "#C#",
+    "C C",
+    "#C#"
+  ],
+  "key": {
+    "#": "minecraft:stone",
+    "C": "minecraft:cobblestone"
+  },
+  "result": {
+    "count": 1,
+    "id": "vs_eureka:ballast"
+  }
+}
