@@ -28,7 +28,7 @@ import org.valkyrienskies.mod.common.getShipManagingPos
 
 /**
  * Works like a dispenser that only takes cannonballs: a redstone pulse or a wired key fires one out of the barrel.
- * The barrel sits on a swivel and can point anywhere. Sneak and right click it, then look where it should fire.
+ * The barrel sits on a swivel and can point anywhere. Crouch and click it, then look where it should fire.
  */
 class CannonBlock(properties: BlockBehaviour.Properties) : DispenserBlock(properties) {
 
@@ -46,6 +46,34 @@ class CannonBlock(properties: BlockBehaviour.Properties) : DispenserBlock(proper
             (level.getBlockEntity(pos) as? CannonBlockEntity)?.startAiming(player)
         }
         return InteractionResult.SUCCESS
+    }
+
+    companion object Aiming {
+        /**
+         * Crouch and left click a cannon starts aiming it, whatever is in your hands, instead of breaking it. Crouch and
+         * right click with an empty hand does too. With something in hand a crouching right click still places it, so
+         * buttons and levers go on cannons the usual way.
+         */
+        fun registerCrouchToAim() {
+            net.fabricmc.fabric.api.event.player.AttackBlockCallback.EVENT.register { player, level, _, pos, _ ->
+                crouchClick(player, level, pos)
+            }
+        }
+
+        private fun crouchClick(player: Player, level: Level, pos: BlockPos): InteractionResult {
+            if (!player.isSecondaryUseActive || player.isSpectator) return InteractionResult.PASS
+            val cannon = level.getBlockEntity(pos) as? CannonBlockEntity ?: return InteractionResult.PASS
+            if (level is ServerLevel && player is ServerPlayer) cannon.startAiming(player)
+            return InteractionResult.SUCCESS
+        }
+
+        /** Height in the block of the point the barrel swivels around. */
+        const val PIVOT_HEIGHT = 9.0 / 16.0
+        private const val DISPENSER_FAIL_EVENT = 1001
+        private const val TRIGGER_DELAY_TICKS = 4
+        private const val MUZZLE_DISTANCE = 1.1
+        private const val SHOT_SPEED = 2.5
+        private const val TICKS_PER_SECOND = 20.0
     }
 
     override fun <T : BlockEntity> getTicker(
@@ -104,13 +132,4 @@ class CannonBlock(properties: BlockBehaviour.Properties) : DispenserBlock(proper
         level.sendParticles(ParticleTypes.LARGE_SMOKE, muzzle.x, muzzle.y, muzzle.z, 12, 0.2, 0.2, 0.2, 0.05)
     }
 
-    companion object {
-        /** Height in the block of the point the barrel swivels around. */
-        const val PIVOT_HEIGHT = 9.0 / 16.0
-        private const val DISPENSER_FAIL_EVENT = 1001
-        private const val TRIGGER_DELAY_TICKS = 4
-        private const val MUZZLE_DISTANCE = 1.1
-        private const val SHOT_SPEED = 2.5
-        private const val TICKS_PER_SECOND = 20.0
-    }
 }

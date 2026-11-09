@@ -200,6 +200,15 @@ object DevSelfTest {
                     3
                 )
                 level.setBlock(BlockPos(4, y + 1, 5), block("vs_eureka:engine").defaultBlockState(), 3)
+                if (System.getenv("VS_TEST_BE_LAN") != null) {
+                    // Blocks with parts drawn apart from the chunk, to watch on a client that joined over the network
+                    level.setBlock(BlockPos(2, y + 1, 2), block("vs_eureka:cannon").defaultBlockState().setValue(BlockStateProperties.FACING, Direction.NORTH), 3)
+                    level.setBlock(BlockPos(3, y + 1, 1), Blocks.CHEST.defaultBlockState(), 3)
+                    level.setBlock(BlockPos(1, y + 1, 1), Blocks.BELL.defaultBlockState(), 3)
+                    for (pos in listOf(BlockPos(2, y + 1, 2), BlockPos(3, y + 1, 1), BlockPos(1, y + 1, 1), BlockPos(0, y + 1, 5))) {
+                        org.valkyrienskies.mod.common.PlacedBlocks.markPlaced(level, pos)
+                    }
+                }
                 for (x in -5..-1) for (z in -5..-1) {
                     if (x == -5 || x == -1 || z == -5 || z == -1) {
                         level.setBlock(BlockPos(x, y + 1, z), Blocks.OAK_FENCE.defaultBlockState(), 3)

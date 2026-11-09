@@ -71,6 +71,9 @@ fun Level.clipIncludeShipsImpl(
         return vanillaHit
     }
 
+    // Every look at a block comes through here, nothing more to do without ships
+    if (shipObjectWorld.allShips.isEmpty()) return vanillaHit
+
     var closestHit = vanillaHit
     var closestHitPos = vanillaHit.location
     var closestHitDist = closestHitPos.distanceToSqr(ctx.from)

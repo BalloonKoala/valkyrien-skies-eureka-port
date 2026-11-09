@@ -60,7 +60,7 @@ Nothing on deck glitches anymore. Tested on a 36 m/s ship with 120 ms of ping:
 - Players with lag no longer shove things around from a spot they aren't really standing in
 
 ### ☸️ A proper captain's wheel
-You stand on the deck with both hands on the wheel, not floating above it, and your mouse is no longer reversed while steering. Crouch and right click opens the helm even with something in your hands.
+You stand on the deck with both hands on the wheel, not floating above it, and your mouse is no longer reversed while steering. Crouch and right click opens the helm even with something in your hands. Let go of left or right and the ship stops turning.
 
 ### 🛋️ Cushions on ships
 Cushions work properly on ships now. Sit on them, break them, and use them as seats anywhere on deck.
@@ -71,7 +71,7 @@ Cushions work properly on ships now. Sit on them, break them, and use them as se
 A new block: an iron barrel on a wooden carriage with wheels, sitting on a swivel, so it can point **any direction**.
 
 1. Place it. The barrel points the way you're facing.
-2. **Aim it:** sneak and right click it with an empty hand, then look where it should fire. The barrel follows your view, straight up and straight down included. Let go of sneak to keep it there.
+2. **Aim it:** sneak and left click it (with anything in your hand, it won't break), or sneak and right click it with an empty hand, then look where it should fire. The barrel follows your view, straight up and straight down included. Let go of sneak to keep it there.
 3. Open it and load **cannonballs**. It has 9 slots like a dispenser, and it only fires cannonballs.
 4. Fire it with a redstone pulse, or with a key from your seat (see the Wiring screen below). It fires the first cannonball in it out of the barrel.
 
@@ -293,6 +293,8 @@ Any balloon plus any dye. This one is shapeless too.
 | Mod | Version | Notes |
 |---|---|---|
 | Sodium | 0.9.3-beta.1 | Full test with ships, wiring and cannons. Sodium for 26.3 is still a beta. |
+| Sodium 0.9.2, Sodium Extra 0.9.4, Reese's Sodium Options 2.2.5 | | Tested together: ships and everything on them draw. |
+| Entity Culling | 1.11.3 | Helm wheels, cannons, chests and signs on ships draw, they disappeared with it before update 5. |
 | JEI | 31.17.0.108 | Shows all the items and recipes from this mod. |
 | Just Enough Resources | 1.11.0.58 | Works, but its villager tab is empty on 26.3. That's a JER issue. |
 

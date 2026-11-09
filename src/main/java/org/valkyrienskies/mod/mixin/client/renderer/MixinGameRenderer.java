@@ -43,6 +43,10 @@ public abstract class MixinGameRenderer {
     @Shadow
     @Final
     private Minecraft minecraft;
+
+    // Whether the frame being drawn moved entities to where their ship is drawn, so they need putting back
+    @Unique
+    private boolean vs$entitiesMoved = false;
     // region Mount the camera to the ship
     @Shadow
     @Final
@@ -62,6 +66,10 @@ public abstract class MixinGameRenderer {
 
             final float partialTick = deltaTracker.getGameTimeDeltaPartialTick(true);
             shipWorld.updateRenderTransforms(partialTick);
+
+            // Without a loaded ship no entity rides or stands on one, skip going through every entity twice a frame
+            vs$entitiesMoved = !shipWorld.getLoadedShips().isEmpty();
+            if (!vs$entitiesMoved) return;
 
             // Also update entity last tick positions, so that they interpolate correctly
             for (final Entity entity : clientWorld.entitiesForRendering()) {
@@ -119,7 +127,8 @@ public abstract class MixinGameRenderer {
     @Inject(method = "render", at = @At("TAIL"))
     private void postRender(CallbackInfo ci) {
         final ClientLevel clientWorld = minecraft.level;
-        if (clientWorld != null) {
+        if (clientWorld != null && vs$entitiesMoved) {
+            vs$entitiesMoved = false;
             // Restore the entity last tick positions that were replaced during this frame
             for (final Entity entity : clientWorld.entitiesForRendering()) {
                 final EntityDraggingInformation vsEntity =

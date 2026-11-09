@@ -61,7 +61,9 @@ object VSEntityManager {
 
     // Uses some heuristics to try to figure out which VSEntityHandler we should use for an entity
     private fun getDefaultHandler(entity: Entity): VSEntityHandler {
-        return defaultHandlersCache.get(entity.type) { determineDefaultHandler(entity) }
+        // Looked up for every entity many times a tick, only make the lambda the first time
+        return defaultHandlersCache.getIfPresent(entity.type)
+            ?: defaultHandlersCache.get(entity.type) { determineDefaultHandler(entity) }
     }
 
     private val seatRegistryName = "(?<![a-z])(seat|chair)(?![a-z])".toRegex(IGNORE_CASE)

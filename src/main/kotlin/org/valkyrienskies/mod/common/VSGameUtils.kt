@@ -243,6 +243,8 @@ fun Level?.transformToNearbyShipsAndWorld(
 inline fun Level.transformToNearbyShipsAndWorld(
     x: Double, y: Double, z: Double, aabbRadius: Double, cb: (Double, Double, Double) -> Unit
 ) {
+    // Most worlds have no ship anywhere, nothing to look for then
+    if (shipObjectWorld.allShips.isEmpty()) return
     val currentShip = getShipManagingPos(x, y, z)
     val aabb = AABBd(x, y, z, x, y, z).expand(aabbRadius)
 
@@ -496,7 +498,11 @@ fun Level?.getWorldCoordinates(blockPos: BlockPos, pos: Vector3d): Vector3d {
 
 fun Level.getShipsIntersecting(aabb: AABB): Iterable<Ship> = getShipsIntersecting(aabb.toJOML())
 fun Level.getShipsIntersecting(aabb: AABBdc): Iterable<Ship> = allShips.getIntersecting(aabb, dimensionId)
-fun Level?.transformAabbToWorld(aabb: AABB): AABB = transformAabbToWorld(aabb.toJOML()).toMinecraft()
+fun Level?.transformAabbToWorld(aabb: AABB): AABB {
+    // Every entity search comes through here, only boxes that start on a ship change
+    if (this == null || !isBlockInShipyard(aabb.minX.toInt(), aabb.minY.toInt(), aabb.minZ.toInt())) return aabb
+    return transformAabbToWorld(aabb.toJOML()).toMinecraft()
+}
 fun Level?.transformAabbToWorld(aabb: AABBd) = this?.transformAabbToWorld(aabb, aabb) ?: aabb
 fun Level?.transformAabbToWorld(aabb: AABBdc, dest: AABBd): AABBd {
     val ship1 = getShipManagingPos(aabb.minX(), aabb.minY(), aabb.minZ())

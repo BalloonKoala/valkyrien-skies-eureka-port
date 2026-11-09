@@ -136,6 +136,11 @@ public class ValkyrienCommonMixinConfigPlugin implements IMixinConfigPlugin {
             }
         }
 
+        // Only with Entity Culling, asked by mod id so its classes don't load before this mixin goes in
+        if (mixinClassName.contains("org.valkyrienskies.mod.mixin.mod_compat.entity_culling")) {
+            return net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("entityculling");
+        }
+
         if (mixinClassName.contains("org.valkyrienskies.mod.mixin.mod_compat.alex_caves")) {
             // Only load this mixin if Alex Caves is installed
             return LoadedMods.getAlexCaves();

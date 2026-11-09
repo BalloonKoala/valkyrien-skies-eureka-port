@@ -295,9 +295,13 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
 
         val isBelowMaxTurnSpeed = abs(omega.y()) < maxOmegaY
 
+        // With no turn key held the ship stops turning. Past stableSpeed the air pushes harder on it, so it stops harder.
+        val speed = physShip.velocity.length()
+        val steady = EurekaConfig.SERVER.stableSpeed
+        val stopHarder = if (steady > 0.0 && speed > steady) min((speed / steady).pow(2), MAX_TURN_STOP_BOOST) else 1.0
         val normalizedAlphaYMultiplier =
             if (isBelowMaxTurnSpeed && control.leftImpulse != 0.0f) control.leftImpulse.toDouble()
-            else -omega.y().coerceIn(-1.0, 1.0)
+            else -(omega.y() / TURN_STOP_EASE).coerceIn(-1.0, 1.0) * stopHarder
 
         val idealAlphaY = normalizedAlphaYMultiplier * maxAlphaY
 
@@ -482,6 +486,10 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
             }
         }
 
+        // Below this turn rate in radians a second, letting go eases the turn out instead of braking at full strength
+        private const val TURN_STOP_EASE = 0.2
+        // Stopping a turn any harder makes the physics overshoot
+        private const val MAX_TURN_STOP_BOOST = 6.0
         private const val ALIGN_THRESHOLD = 0.01
         private const val DISASSEMBLE_THRESHOLD = 0.02
         private val forcePerBalloon get() = EurekaConfig.SERVER.massPerBalloon * -GRAVITY

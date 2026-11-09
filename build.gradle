@@ -38,6 +38,8 @@ loom {
             vmArgs "-Xmx3G", "-Dfabric.client.gametest", "-Dfabric.client.gametest.disableNetworkSynchronizer=true"
             runDir System.getenv("VS_TEST_RUNDIR") ?: "run-clienttest"
             if (System.getenv("VS_TEST_NAME") != null) programArgs "--username", System.getenv("VS_TEST_NAME")
+            // A CPU profile of the run, for finding what costs frame time
+            if (System.getenv("VS_TEST_JFR") != null) vmArg "-XX:StartFlightRecording=filename=${System.getenv("VS_TEST_JFR")},settings=profile,dumponexit=true"
         }
         audit {
             client()
@@ -71,7 +73,14 @@ dependencies {
     compileOnly "io.github.llamalad7:mixinextras-common:0.5.0"
 
     compileOnly "maven.modrinth:sodium:${project.sodium_version}"
-    if (System.getenv("VS_TEST_SODIUM") != null) localRuntime "maven.modrinth:sodium:${project.sodium_version}"
+    if (System.getenv("VS_TEST_PACK") != null) {
+        // The Sodium mods of the server's mod pack, at the versions it uses
+        localRuntime "maven.modrinth:sodium:mc26.3-0.9.2-fabric"
+        localRuntime("maven.modrinth:sodium-extra:mc26.3-0.9.4+fabric") { transitive = false }
+        localRuntime("maven.modrinth:reeses-sodium-options:mc26.3-2.2.5+fabric") { transitive = false }
+    } else if (System.getenv("VS_TEST_SODIUM") != null) localRuntime "maven.modrinth:sodium:${project.sodium_version}"
+    // Entity Culling, which hides block entities it thinks can't be seen
+    if (System.getenv("VS_TEST_CULLING") != null) localRuntime("maven.modrinth:entityculling:X1g3VhTx") { transitive = false }
     // Optional compatibility targets
     compileOnly("maven.modrinth:cc-tweaked:tKLY4fAR") { transitive = false }
     compileOnly("maven.modrinth:bluemap:TROfpX7m") { transitive = false }
@@ -80,6 +89,7 @@ dependencies {
     compileOnly("maven.modrinth:sound-physics-remastered:gA7nKz5g") { transitive = false }
     compileOnly("maven.modrinth:echo-chest:OjnNXGkz") { transitive = false }
     compileOnly("maven.modrinth:iris:vTN4NRGW") { transitive = false }
+    compileOnly("maven.modrinth:entityculling:X1g3VhTx") { transitive = false }
     compileOnly("maven.modrinth:jei:1Uzmw8Mr") { transitive = false }
     if (System.getenv("VS_TEST_JEI") != null) {
         localRuntime("maven.modrinth:jei:1Uzmw8Mr") { transitive = false }

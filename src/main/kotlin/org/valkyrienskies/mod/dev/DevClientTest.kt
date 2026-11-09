@@ -197,6 +197,7 @@ class DevClientTest : FabricClientGameTest {
     }
 
     private fun motionTest(context: ClientGameTestContext) {
+        if (System.getenv("VS_TEST_BE_LAN") != null) watchDrawnBlockEntities(context, "host")
         measureFrames()
         context.worldBuilder().setUseConsistentSettings(false).create().use { world ->
             val server = world.server
@@ -326,6 +327,7 @@ class DevClientTest : FabricClientGameTest {
         context.waitFor({ mc -> mc.level!!.shipObjectWorld.loadedShips.isNotEmpty() }, 2400)
         log("motion client sees ship")
         if (System.getenv("VS_TEST_WIRING_LAN") != null) lanWiring(context)
+        if (System.getenv("VS_TEST_BE_LAN") != null) watchDrawnBlockEntities(context, "joined")
         freeRun()
         val start = System.currentTimeMillis()
         val walk = System.getenv("VS_TEST_WALK") != null
@@ -343,6 +345,27 @@ class DevClientTest : FabricClientGameTest {
         log("motion finished")
         Thread.sleep(500)
         Runtime.getRuntime().halt(0)
+    }
+
+    @Volatile
+    private var drawnOnShip: Map<String, Int> = emptyMap()
+
+    // Counts the block entities drawn each frame for a while, and takes pictures of the deck
+    private fun watchDrawnBlockEntities(context: ClientGameTestContext, tag: String) {
+        LevelExtractionEvents.END_EXTRACTION.register(LevelExtractionEvents.EndExtraction { ctx ->
+            drawnOnShip = ctx.levelState().blockEntityRenderStates.groupingBy { it.javaClass.simpleName.removeSuffix("RenderState") }.eachCount()
+        })
+        Thread {
+            for (i in 1..12) {
+                Thread.sleep(5000)
+                val mc = Minecraft.getInstance()
+                val ships = mc.level?.shipObjectWorld?.loadedShips?.size
+                log("bewatch $tag t=${i * 5}s ships=$ships drawn=${drawnOnShip.toSortedMap()}")
+                if (i == 6 || i == 11) mc.execute {
+                    net.minecraft.client.Screenshot.grab(mc.gameDirectory, "bewatch_${tag}_$i.png", mc.gameRenderer.mainRenderTarget(), 1) { }
+                }
+            }
+        }.start()
     }
 
     // Turns the player to look at a spot on the ship, from there the crosshair does the work as it does for a real player
@@ -1127,6 +1150,14 @@ class DevClientTest : FabricClientGameTest {
             featureTest(context)
             return
         }
+        if (System.getenv("VS_TEST_IDLE") != null) {
+            DevFeatureTest.idleTest(context)
+            return
+        }
+        if (System.getenv("VS_TEST_HELM_WHEEL") != null) {
+            DevFeatureTest.helmWheelTest(context)
+            return
+        }
         if (System.getenv("VS_TEST_CANNONBALLS") != null) {
             DevFeatureTest.cannonballTest(context)
             return
@@ -1141,6 +1172,10 @@ class DevClientTest : FabricClientGameTest {
         }
         if (System.getenv("VS_TEST_SPEEDS") != null) {
             DevFeatureTest.speedTest(context)
+            return
+        }
+        if (System.getenv("VS_TEST_GROUND") != null) {
+            DevFeatureTest.groundTest(context)
             return
         }
         if (System.getenv("VS_TEST_DECK") != null) {

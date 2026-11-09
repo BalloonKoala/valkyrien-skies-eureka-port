@@ -170,6 +170,7 @@
     "feature.transform_particles.MixinLevelRenderer",
     "feature.transform_particles.MixinParticle",
     "feature.vs2_alpha_hud.MixinGui",
+    "mod_compat.entity_culling.MixinEntityCullingMod",
     "mod_compat.etf.MixinBlockEntity",
     "mod_compat.sodium.MixinChunkTracker",
     "mod_compat.sodium.MixinDefaultChunkRenderer",

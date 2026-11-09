@@ -64,6 +64,7 @@ object EntityShipCollisionUtils {
                 return true
             }
 
+            if (level.allShips.isEmpty()) return false
             val aabb = entity.boundingBox.toJOML()
             return getAllShipsIntersectingEvenIfNotYetFullyLoaded(level, aabb)
                 .allMatch { ship ->
@@ -107,6 +108,8 @@ object EntityShipCollisionUtils {
         entityBoundingBox: AABB,
         world: Level
     ): Vec3 {
+        // Nothing to collide with, and every entity in the world comes through here every time it moves
+        if (world.shipObjectWorld.loadedShips.isEmpty()) return movement
         // Inflate the bounding box more for players than other entities, to give players a better collision result.
         // Note that this increases the cost of doing collision, so we only do it for the players
         val inflation = if (entity is Player) 0.5 else 0.1

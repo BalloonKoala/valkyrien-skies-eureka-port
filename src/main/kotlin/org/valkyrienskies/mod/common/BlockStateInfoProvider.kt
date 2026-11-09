@@ -26,6 +26,7 @@ import org.valkyrienskies.mod.common.config.MassDatapackResolver
 import org.valkyrienskies.mod.common.config.VSGameConfig
 import org.valkyrienskies.mod.common.hooks.VSGameEvents
 import org.valkyrienskies.mod.common.util.BuoyancyHandlerAttachment
+import org.valkyrienskies.mod.common.util.VSServerLevel
 import java.util.function.IntFunction
 
 // Other mods can then provide weights and types based on their added content
@@ -89,7 +90,8 @@ object BlockStateInfo {
                 return null
             }
 
-            return blockStateCache.computeIfAbsent(blockId, IntFunction { iterateRegistry(blockState) })
+            // No lambda here, this runs for every block of every chunk physics gets
+            return blockStateCache.get(blockId) ?: iterateRegistry(blockState).also { blockStateCache.put(blockId, it) }
         }
     }
 
@@ -126,6 +128,12 @@ object BlockStateInfo {
 
     fun onSetBlock(level: Level, x: Int, y: Int, z: Int, prevBlockState: BlockState, newBlockState: BlockState) {
         if (!::SORTED_REGISTRY.isInitialized) return
+
+        // Physics only has the terrain near ships. A block changing anywhere else would leave a stray bit of terrain in
+        // it that nothing ever removes, it gets the whole chunk once a ship comes near.
+        if (level is ServerLevel && level is VSServerLevel && !level.isChunkKnownToPhysics(x shr 4, z shr 4) &&
+            !level.isChunkInShipyard(x shr 4, z shr 4)
+        ) return
 
         val shipObjectWorld = level.shipObjectWorld
 

@@ -101,13 +101,26 @@ object DevFeatureTest {
         context.waitTicks(2)
 
         val targets = listOf(Vector3d(1.0, 1.0, -1.0), Vector3d(-0.3, -1.6, -1.0), Vector3d(0.0, 0.0, 1.0), Vector3d(0.6, 3.0, 0.2))
+        // Left click with an empty hand, left click holding a block, right click with an empty hand, left click again
+        val clicks = listOf("left", "left+cobblestone", "right", "left+cobblestone")
         for ((i, target) in targets.withIndex()) {
-            // Sneak, right click the cannon, look where it should fire and let go of sneak
+            val click = clicks[i]
+            server.runOnServer<RuntimeException> { s ->
+                s.playerList.players[0].setItemInHand(InteractionHand.MAIN_HAND,
+                    if (click.endsWith("cobblestone")) ItemStack(Blocks.COBBLESTONE.asItem(), 8) else ItemStack.EMPTY)
+            }
+            // Sneak, click the cannon, look where it should fire and let go of sneak
             context.input.holdKey { it.keyShift }
             context.waitTicks(4)
             aim(Vector3d(spot.x + 0.5, spot.y + 0.5, spot.z + 0.5))
-            context.input.pressKey { it.keyUse }
+            if (click.startsWith("left")) context.input.pressKey { it.keyAttack } else context.input.pressKey { it.keyUse }
             context.waitTicks(4)
+            server.runOnServer<RuntimeException> { s ->
+                val level = s.overworld()
+                val be = level.getBlockEntity(spot) as? CannonBlockEntity
+                log("cannon click $i $click aiming=${be?.isBeingAimed == true} block=${level.getBlockState(spot).block} " +
+                    "cobblestone=${s.playerList.players[0].mainHandItem.count}")
+            }
             lookAlongShip(context, target)
             context.waitTicks(12)
             context.input.releaseKey { it.keyShift }
@@ -149,6 +162,22 @@ object DevFeatureTest {
                 teleportOnShip(level, Vector3d(spot.x - 1.5, spot.y + 0.05, spot.z + 2.5), 0f, 30f)
             }
             context.waitTicks(10)
+        }
+        // Sneaking with a button in hand still puts it on the cannon instead of aiming
+        server.runOnServer<RuntimeException> { s ->
+            s.playerList.players[0].setItemInHand(InteractionHand.MAIN_HAND, ItemStack(Blocks.STONE_BUTTON.asItem(), 2))
+        }
+        context.input.holdKey { it.keyShift }
+        context.waitTicks(4)
+        aim(Vector3d(spot.x + 0.5, spot.y + 0.5, spot.z + 1.0))
+        context.input.pressKey { it.keyUse }
+        context.waitTicks(4)
+        context.input.releaseKey { it.keyShift }
+        context.waitTicks(4)
+        server.runOnServer<RuntimeException> { s ->
+            val level = s.overworld()
+            val be = level.getBlockEntity(spot) as? CannonBlockEntity
+            log("cannon sneak button south=${level.getBlockState(spot.south()).block} aiming=${be?.isBeingAimed == true} cannon=${level.getBlockState(spot).block}")
         }
         // The item in the inventory
         server.runOnServer<RuntimeException> { s ->
@@ -240,6 +269,14 @@ object DevFeatureTest {
      * something far too big.
      */
     fun assemblyTest(context: ClientGameTestContext) {
+        if (!countingDrawn) {
+            countingDrawn = true
+            net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionEvents.END_EXTRACTION.register(
+                net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionEvents.EndExtraction { ctx ->
+                    drawnKinds = ctx.levelState().blockEntityRenderStates.groupingBy { it.javaClass.simpleName }.eachCount()
+                }
+            )
+        }
         context.worldBuilder().create().use { world ->
             val server = world.server
             server.runCommand("gamerule doDaylightCycle false")
@@ -327,7 +364,13 @@ object DevFeatureTest {
                 context.waitTicks(5)
                 DevClientTest.shotOf(context, "assembly_${case}_turned")
                 if (case == "boat") {
+                    log("assembly boat drawn before ${drawnKinds.toSortedMap()}")
                     context.clickScreenButton("gui.vs_eureka.assembly.confirm")
+                    for (wait in listOf(5, 20, 60)) {
+                        context.waitTicks(wait)
+                        log("assembly boat drawn after +$wait ticks ${drawnKinds.toSortedMap()}")
+                    }
+                    DevClientTest.shotOf(context, "assembly_boat_assembled")
                 } else {
                     context.clickScreenButton("gui.cancel")
                 }
@@ -468,6 +511,7 @@ object DevFeatureTest {
         put(origin.offset(2, -1, 4), block("vs_eureka:balloon").defaultBlockState())
         val helm = origin.offset(2, 1, 6)
         put(helm, block("vs_eureka:oak_ship_helm").defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH))
+        if (case == "boat") put(origin.offset(2, 1, 2), block("vs_eureka:cannon").defaultBlockState().setValue(BlockStateProperties.FACING, Direction.NORTH))
         when (case) {
             "dock" -> {
                 // A dock right next to the boat, touching its side
@@ -609,6 +653,191 @@ object DevFeatureTest {
         log("cannonball test finished")
     }
 
+    @Volatile
+    private var drawnKinds: Map<String, Int> = emptyMap()
+    private var countingDrawn = false
+
+    // Blocks drawn apart from the chunk mesh, each one has to keep showing on a ship
+    private val drawnExtras = listOf(
+        "minecraft:chest", "minecraft:oak_sign", "minecraft:white_banner", "minecraft:bell", "minecraft:skeleton_skull",
+        "minecraft:lectern", "minecraft:enchanting_table", "minecraft:campfire", "minecraft:decorated_pot", "minecraft:shulker_box"
+    )
+
+    /** The helm's wheel, the cannon's barrel and every other block drawn apart from the chunk have to stay after assembling. */
+    fun helmWheelTest(context: ClientGameTestContext) {
+        if (!countingDrawn) {
+            countingDrawn = true
+            net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionEvents.END_EXTRACTION.register(
+                net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionEvents.EndExtraction { ctx ->
+                    drawnKinds = ctx.levelState().blockEntityRenderStates.groupingBy { it.javaClass.simpleName }.eachCount()
+                }
+            )
+        }
+        context.worldBuilder().create().use { world ->
+            val server = world.server
+            server.runCommand("gamerule doDaylightCycle false")
+            server.runCommand("time set noon")
+            lateinit var helm: BlockPos
+            lateinit var middle: BlockPos
+            server.runOnServer<RuntimeException> { s ->
+                val level = s.overworld()
+                val origin = BlockPos(0, 0, 0)
+                helm = buildBoat(level, origin, "boat")
+                for (x in 0 until 5) for (z in 0 until 9) {
+                    level.setBlock(origin.offset(x, -1, z), block("vs_eureka:balloon").defaultBlockState(), 3)
+                    org.valkyrienskies.mod.common.PlacedBlocks.markPlaced(level, origin.offset(x, -1, z))
+                }
+                fun put(pos: BlockPos, state: net.minecraft.world.level.block.state.BlockState) {
+                    level.setBlock(pos, state, 3)
+                    org.valkyrienskies.mod.common.PlacedBlocks.markPlaced(level, pos)
+                }
+                put(origin.offset(2, 1, 2), block("vs_eureka:cannon").defaultBlockState().setValue(BlockStateProperties.FACING, Direction.NORTH))
+                for ((i, id) in drawnExtras.withIndex()) {
+                    val pos = origin.offset(1 + (i % 3), 1, 3 + i / 3).let { if (it == helm) it.east() else it }
+                    if (pos == helm || pos == origin.offset(2, 1, 2)) continue
+                    put(pos, block(id).defaultBlockState())
+                }
+                middle = origin.offset(2, 1, 4)
+                s.playerList.players[0].setGameMode(GameType.SPECTATOR)
+            }
+            // Front, behind, from above and from further away
+            val views = listOf(
+                "near" to Vector3d(3.0, 2.0, 5.0), "behind" to Vector3d(-4.0, 3.0, -6.0),
+                "above" to Vector3d(0.5, 9.0, 0.5), "far" to Vector3d(22.0, 10.0, 24.0)
+            )
+            fun look(tag: String) {
+                for ((name, offset) in views) {
+                    server.runOnServer<RuntimeException> { s ->
+                        val level = s.overworld()
+                        val ship = level.shipObjectWorld.allShips.firstOrNull()
+                        val target = Vector3d(middle.x + 0.5, middle.y + 0.5, middle.z + 0.5)
+                        ship?.shipToWorld?.transformPosition(target)
+                        val eye = Vector3d(target).add(offset)
+                        val d = Vector3d(target).sub(eye)
+                        val yaw = Math.toDegrees(Math.atan2(-d.x, d.z)).toFloat()
+                        val pitch = Math.toDegrees(-Math.atan2(d.y, hypot(d.x, d.z))).toFloat()
+                        s.playerList.players[0].teleportTo(level, eye.x, eye.y - 1.62, eye.z, setOf(), yaw, pitch, true)
+                    }
+                    context.waitTicks(15)
+                    world.connection.waitForChunksRender()
+                    context.waitTicks(10)
+                    log("helmwheel $tag $name drawn ${drawnKinds.toSortedMap()}")
+                    DevClientTest.shotOf(context, "helmwheel_${tag}_$name")
+                }
+            }
+            context.runOnClient<RuntimeException> { mc -> mc.options.chatVisibility().set(net.minecraft.world.entity.player.ChatVisiblity.HIDDEN) }
+            look("before")
+            server.runOnServer<RuntimeException> { s ->
+                val level = s.overworld()
+                (level.getBlockEntity(helm) as org.valkyrienskies.eureka.blockentity.ShipHelmBlockEntity).assemble(s.playerList.players[0])
+            }
+            context.waitTicks(20)
+            server.runOnServer<RuntimeException> { s ->
+                val level = s.overworld()
+                val ship = level.shipObjectWorld.allShips.first()
+                val offset = ship.transform.positionInShip
+                // Where the middle of the boat ended up in the shipyard
+                val box = ship.shipAABB!!
+                middle = BlockPos(box.minX() + 2, box.minY() + 2, box.minZ() + 4)
+                log("helmwheel assembled ${ship.slug} middle now $middle")
+            }
+            look("after")
+            context.waitTicks(100)
+            look("later")
+        }
+        log("helmwheel test finished")
+    }
+
+    /** Stands still in a normal world without any ship and writes down the frame rate, for profiling. */
+    fun idleTest(context: ClientGameTestContext) {
+        context.worldBuilder().setUseConsistentSettings(false).create().use { world ->
+            val server = world.server
+            server.runCommand("gamerule doDaylightCycle false")
+            server.runCommand("time set noon")
+            context.runOnClient<RuntimeException> { mc ->
+                mc.options.renderDistance().set(12)
+                mc.options.framerateLimit().set(260)
+                mc.options.enableVsync().set(false)
+                if (!mc.gui.hud.isHidden) mc.gui.hud.toggle()
+            }
+            server.runOnServer<RuntimeException> { s ->
+                val p = s.playerList.players[0]
+                p.setGameMode(GameType.SPECTATOR)
+                p.teleportTo(s.overworld(), 0.5, 110.0, 0.5, setOf(), 30f, 20f, true)
+            }
+            // Let the chunks around load and build
+            context.waitTicks(500)
+            log("idle measuring")
+            for (i in 1..8) {
+                context.waitTicks(100)
+                log("idle t=${i * 5}s fps=${context.computeOnClient<Int, RuntimeException> { it.fps }}")
+            }
+        }
+        log("idle test finished")
+    }
+
+    /**
+     * Physics only gets the terrain near ships. A ship dropped onto ground nobody went near must land on it, and one
+     * sliding fast along the ground must not run off the terrain physics has.
+     */
+    fun groundTest(context: ClientGameTestContext) {
+        context.worldBuilder().create().use { world ->
+            val server = world.server
+            context.runOnClient<RuntimeException> { mc -> mc.options.renderDistance().set(8) }
+            for ((case, spot) in listOf("drop" to BlockPos(900, 0, 900), "fall" to BlockPos(-900, 0, 900), "slide" to BlockPos(900, 0, -900))) {
+                server.runOnServer<RuntimeException> { s ->
+                    val p = s.playerList.players[0]
+                    p.setGameMode(GameType.SPECTATOR)
+                    p.teleportTo(s.overworld(), spot.x + 0.5, 140.0, spot.z + 0.5, setOf(), 0f, 60f, true)
+                }
+                context.waitTicks(200)
+                var ship: ServerShip? = null
+                var ground = 0
+                server.runOnServer<RuntimeException> { s ->
+                    val level = s.overworld()
+                    ground = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, spot.x, spot.z)
+                    val start = spot.atY(ground + if (case == "fall") 90 else if (case == "slide") 2 else 10)
+                    for (x in 0 until 3) for (z in 0 until 3) level.setBlock(start.offset(x, 0, z), Blocks.STONE.defaultBlockState(), 3)
+                    val helm = start.offset(1, 1, 1)
+                    level.setBlock(helm, block("vs_eureka:oak_ship_helm").defaultBlockState()
+                        .setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH), 3)
+                    ship = ShipAssembler.collectBlocks(level, helm) { !it.isAir }
+                    log("ground $case ground=$ground start y=${start.y} ship=${ship != null} physics terrain known here=" +
+                        (level as org.valkyrienskies.mod.common.util.VSServerLevel).isChunkKnownToPhysics(spot.x shr 4, spot.z shr 4))
+                }
+                context.waitTicks(5)
+                if (case == "slide") server.runOnServer<RuntimeException> { s ->
+                    val level = s.overworld()
+                    val loaded = level.shipObjectWorld.loadedShips.getById(ship!!.id) ?: return@runOnServer
+                    val data = org.valkyrienskies.mod.common.vsCore.newShipTeleportData(
+                        newPos = Vector3d(loaded.transform.positionInWorld), newVel = Vector3d(0.0, 0.0, 60.0)
+                    )
+                    org.valkyrienskies.mod.common.vsCore.teleportShip(level.shipObjectWorld, loaded, data)
+                }
+                var lowest = Double.MAX_VALUE
+                for (half in 1..16) {
+                    context.waitTicks(10)
+                    server.runOnServer<RuntimeException> { s ->
+                        val level = s.overworld()
+                        val loaded = level.shipObjectWorld.loadedShips.getById(ship!!.id) ?: return@runOnServer
+                        val box = loaded.worldAABB
+                        val cx = ((box.minX() + box.maxX()) / 2).toInt()
+                        val cz = ((box.minZ() + box.maxZ()) / 2).toInt()
+                        val under = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, cx, cz)
+                        val sink = under - box.minY()
+                        lowest = minOf(lowest, box.minY() - under)
+                        val p = s.playerList.players[0]
+                        p.teleportTo(level, cx + 0.5, box.maxY() + 25.0, cz + 0.5, setOf(), 0f, 60f, true)
+                        if (half % 2 == 0) log("ground $case t=${half / 2}s bottom=%.2f groundThere=%d sunkIn=%.2f speed=%.1f at x=%d z=%d"
+                            .format(box.minY(), under, sink, loaded.velocity.length(), cx, cz))
+                    }
+                }
+                log("ground $case result ${if (lowest > -1.0) "ON GROUND" else "FELL THROUGH"} lowest above ground=%.2f".format(lowest))
+            }
+        }
+        log("ground test finished")
+    }
+
     class SpeedRun(val name: String, val width: Int, val length: Int, val engines: Int)
 
     /** Builds a flying deck, puts engines on it and drives it flat out, then reports the speed it settles at. */
@@ -648,7 +877,7 @@ object DevFeatureTest {
                     loaded.setAttachment(driver)
                 }
                 var last = 0.0
-                for (second in 1..30) {
+                for (second in 1..(System.getenv("VS_TEST_SPEED_SECONDS") ?: "30").toInt()) {
                     context.waitTicks(20)
                     server.runOnServer<RuntimeException> { s ->
                         val level = s.overworld()
@@ -665,6 +894,29 @@ object DevFeatureTest {
                             log("speed ${run.name} ${run.width}x${run.length} engines=${run.engines} t=${second}s speed=%.1f mass=%.0f long=%d tilt=%.1f y=%.1f".format(
                                 last, loaded.inertiaData.mass, maxOf(box.maxX() - box.minX(), box.maxZ() - box.minZ()), tilt, pos.y()))
                         }
+                    }
+                }
+                if (System.getenv("VS_TEST_TURN") != null) {
+                    // Hold left for 3 seconds, let go and see how fast the turning stops, going flat out and then standing
+                    for ((phase, forward) in listOf("moving" to 1f, "still" to 0f)) {
+                        fun drive(left: Float) = server.runOnServer<RuntimeException> { s ->
+                            val loaded = s.overworld().shipObjectWorld.loadedShips.getById(ship!!.id) as? LoadedServerShip ?: return@runOnServer
+                            val driver = loaded.getAttachment(SeatedControllingPlayer::class.java) ?: return@runOnServer
+                            driver.forwardImpulse = forward
+                            driver.leftImpulse = left
+                        }
+                        fun turnRate(tag: String) = server.runOnServer<RuntimeException> { s ->
+                            val level = s.overworld()
+                            val loaded = level.shipObjectWorld.loadedShips.getById(ship!!.id) ?: return@runOnServer
+                            val pos = loaded.transform.positionInWorld
+                            s.playerList.players[0].teleportTo(level, pos.x(), pos.y() + 15.0, pos.z(), setOf(), 180f, 30f, true)
+                            log("turn ${run.name} $phase $tag yaw rate=%.1f deg/s speed=%.1f".format(Math.toDegrees(loaded.angularVelocity.y()), loaded.velocity.length()))
+                        }
+                        if (forward == 0f) { drive(0f); context.waitTicks(200) }
+                        drive(1f)
+                        for (t in 1..6) { context.waitTicks(10); turnRate("holding left ${t * 0.5}s") }
+                        drive(0f)
+                        for (t in 1..12) { context.waitTicks(10); turnRate("let go ${t * 0.5}s") }
                     }
                 }
                 if (i == 0) DevClientTest.shotOf(context, "speed_${run.name}")

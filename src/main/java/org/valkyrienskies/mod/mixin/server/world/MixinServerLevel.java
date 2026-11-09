@@ -249,9 +249,15 @@ public abstract class MixinServerLevel implements IShipObjectWorldServerProvider
         final List<VsiTerrainUpdate> voxelShapeUpdates = new ArrayList<>();
         final DistanceManagerAccessor distanceManagerAccessor = (DistanceManagerAccessor) chunkSource.chunkMap.getDistanceManager();
 
-        for (final ChunkHolder chunkHolder : chunkMapAccessor.getVisibleChunkMap().values()) {
+        // Physics only needs the terrain around ships. Turning every loaded chunk into physics terrain cost a lot of
+        // time and memory even in worlds without a single ship.
+        final List<int[]> shipAreas = vs$shipTerrainAreas(shipObjectWorld, VSGameUtilsKt.getDimensionId(self));
+
+        for (final ChunkHolder chunkHolder : shipAreas.isEmpty() ? List.<ChunkHolder>of() : chunkMapAccessor.getVisibleChunkMap().values()) {
+            final ChunkPos holderPos = chunkHolder.getPos();
+            if (!vs$neededByPhysics(self, holderPos.x(), holderPos.z(), shipAreas)) continue;
             // Only load chunks that haven't been loaded before, and have a ticket
-            if (!vs$knownChunks.containsKey(chunkHolder.getPos()) && !distanceManagerAccessor.getTicketStorage().getTickets(chunkHolder.getPos().pack()).isEmpty()) {
+            if (!vs$knownChunks.containsKey(holderPos) && !distanceManagerAccessor.getTicketStorage().getTickets(holderPos.pack()).isEmpty()) {
                 final ChunkResult<LevelChunk> worldChunkResult =
                     chunkHolder.getTickingChunkFuture().getNow(ChunkHolder.UNLOADED_LEVEL_CHUNK);
                 if (worldChunkResult.isSuccess()) {
@@ -266,8 +272,11 @@ public abstract class MixinServerLevel implements IShipObjectWorldServerProvider
         while (knownChunkPosIterator.hasNext()) {
             final Entry<ChunkPos, List<Vector3ic>> knownChunkPosEntry = knownChunkPosIterator.next();
             final long chunkPos = knownChunkPosEntry.getKey().pack();
-            // Unload chunks if they don't have tickets or if they're not in the visible chunks
-            if ((distanceManagerAccessor.getTicketStorage().getTickets(chunkPos).isEmpty() || chunkMapAccessor.callGetVisibleChunkIfPresent(chunkPos) == null)) {
+            // Unload chunks if they don't have tickets, if they're not in the visible chunks, or no ship is near anymore
+            final ChunkPos knownPos = knownChunkPosEntry.getKey();
+            if (!vs$neededByPhysics(self, knownPos.x(), knownPos.z(), shipAreas)
+                || distanceManagerAccessor.getTicketStorage().getTickets(chunkPos).isEmpty()
+                || chunkMapAccessor.callGetVisibleChunkIfPresent(chunkPos) == null) {
                 final long ticksWaitingToUnload = vs$chunksToUnload.getOrDefault(chunkPos, 0L);
                 if (ticksWaitingToUnload > VS$CHUNK_UNLOAD_THRESHOLD) {
                     // Unload this chunk
@@ -281,6 +290,9 @@ public abstract class MixinServerLevel implements IShipObjectWorldServerProvider
                 } else {
                     vs$chunksToUnload.put(chunkPos, ticksWaitingToUnload + 1);
                 }
+            } else if (!vs$chunksToUnload.isEmpty()) {
+                // Needed again, a ship coming back must not find its terrain gone a moment later
+                vs$chunksToUnload.remove(chunkPos);
             }
         }
 
@@ -296,6 +308,45 @@ public abstract class MixinServerLevel implements IShipObjectWorldServerProvider
 
         DragInfoReporter.INSTANCE.tick((ServerLevel) (Object) this);
 
+    }
+
+    // Chunks of terrain kept around a ship, plus as far as it goes in a second at its speed
+    @Unique
+    private static final int VS$TERRAIN_MARGIN_CHUNKS = 2;
+    @Unique
+    private static final double VS$TERRAIN_LOOKAHEAD_SECONDS = 1.0;
+
+    /** The chunk areas around this dimension's ships, as min x, min z, max x, max z. */
+    @Unique
+    private static List<int[]> vs$shipTerrainAreas(final VsiServerShipWorld shipWorld, final String dimension) {
+        if (shipWorld.getLoadedShips().isEmpty()) return List.of();
+        final List<int[]> areas = new ArrayList<>();
+        for (final LoadedServerShip ship : shipWorld.getLoadedShips()) {
+            if (!dimension.equals(ship.getChunkClaimDimension())) continue;
+            final org.joml.primitives.AABBdc box = ship.getWorldAABB();
+            final int margin = VS$TERRAIN_MARGIN_CHUNKS
+                + (int) Math.ceil(ship.getVelocity().length() * VS$TERRAIN_LOOKAHEAD_SECONDS / 16.0);
+            areas.add(new int[] {
+                ((int) Math.floor(box.minX()) >> 4) - margin, ((int) Math.floor(box.minZ()) >> 4) - margin,
+                ((int) Math.floor(box.maxX()) >> 4) + margin, ((int) Math.floor(box.maxZ()) >> 4) + margin
+            });
+        }
+        return areas;
+    }
+
+    /** Ship chunks always go to physics, world chunks only near a ship. */
+    @Unique
+    private static boolean vs$neededByPhysics(final ServerLevel level, final int chunkX, final int chunkZ, final List<int[]> areas) {
+        if (VSGameUtilsKt.isChunkInShipyard(level, chunkX, chunkZ)) return true;
+        for (final int[] area : areas) {
+            if (chunkX >= area[0] && chunkZ >= area[1] && chunkX <= area[2] && chunkZ <= area[3]) return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isChunkKnownToPhysics(final int chunkX, final int chunkZ) {
+        return vs$knownChunks.containsKey(new ChunkPos(chunkX, chunkZ));
     }
 
     @Override

@@ -205,6 +205,7 @@ public abstract class MixinClientChunkCache implements ClientChunkCacheDuck {
         final boolean bl,
         final CallbackInfoReturnable<LevelChunk> cir
     ) {
+        if (vs$shipChunks.isEmpty()) return;
         final LevelChunk shipChunk = vs$shipChunks.get(ChunkPos.pack(chunkX, chunkZ));
         if (shipChunk != null) {
             cir.setReturnValue(shipChunk);

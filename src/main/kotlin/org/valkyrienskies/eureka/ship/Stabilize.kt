@@ -57,6 +57,9 @@ fun stabilize(
     var strength = EurekaConfig.SERVER.stabilizationTorqueConstant / max(1.0, wobble * wobble * EurekaConfig.SERVER.scaledInstability / ship.mass + wobble * EurekaConfig.SERVER.unscaledInstability)
     if (steadySpeed > 0.0 && speed > steadySpeed) strength *= min((speed / steadySpeed).pow(2), MAX_HIGH_SPEED_HOLD)
     stabilizationTorque.mul(strength)
+    // While a player steers, levelling mustn't turn the ship. On a tilted ship part of the levelling torque points up,
+    // and at speed that was enough to keep a ship spinning after the turn key was let go.
+    if (!yaw) stabilizationTorque.y = 0.0
     forces.applyInvariantTorque(stabilizationTorque)
 
     if (linear) {

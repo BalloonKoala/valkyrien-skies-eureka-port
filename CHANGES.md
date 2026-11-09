@@ -19,6 +19,9 @@ This project is a modified version of **Valkyrien Skies 2.4.11** and **VS Eureka
 - Survival players on moving ships are no longer pulled back by the server's movement check, the same as in 2.4.11
 - Players can start gliding with an elytra from a ship
 - Ships draw without them for a frame instead of crashing when something goes wrong while drawing them
+- Block entities on ships, like helm wheels, cannons, chests and signs, are drawn when Entity Culling is installed
+- Ships stop turning when the steering key is let go, also at high speed
+- Physics only gets the terrain near ships, so worlds with few or no ships take far less work, and checks that ran for every entity or every frame skip themselves when there are no ships
 
 ## New features
 - Cushions work on ships, and a cushion in front of a helm is a driver's seat
@@ -26,6 +29,7 @@ This project is a modified version of **Valkyrien Skies 2.4.11** and **VS Eureka
 - Cannon block, with a barrel that can be aimed in any direction
 - Small, medium and large cannonball items with their own recipes and explosion power settings; cannons only fire cannonballs
 - Crouching and right clicking a helm opens it whatever is in the player's hands
+- Crouching and left clicking a cannon aims it whatever is in the player's hand, without breaking it
 - Cannons can be wired straight to a helm or cushion and fired with a key, no wireless button needed
 - Ship Info screen before assembling, with the block count and a 3D view of what would become the ship
 - Blocks players place are remembered per chunk, and only those can become a ship, through the helm or VS's assembler items

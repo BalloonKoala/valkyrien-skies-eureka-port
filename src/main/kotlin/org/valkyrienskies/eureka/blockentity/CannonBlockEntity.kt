@@ -70,6 +70,7 @@ class CannonBlockEntity(pos: BlockPos, state: BlockState) :
     }
 
     private var aimingPlayer: UUID? = null
+    val isBeingAimed: Boolean get() = aimingPlayer != null
     private var aimingTicks = 0
 
     // Where the barrel is drawn, it swings over to the aim instead of jumping. Client only.

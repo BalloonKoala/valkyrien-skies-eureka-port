@@ -102,7 +102,8 @@ public abstract class MixinEntity implements IEntityDraggingInformationProvider 
             entityDraggingInformation.setLastShipStoodOn(null);
             entityDraggingInformation.setAddedYawRotLastTick(0.0);
 
-            for (Entity entityRiding : entity.getIndirectPassengers()) {
+            // Only when something rides it, getting the passengers costs something for every entity on the ground
+            if (!entity.getPassengers().isEmpty()) for (Entity entityRiding : entity.getIndirectPassengers()) {
                 final EntityDraggingInformation passengerDraggingInformation =
                     ((IEntityDraggingInformationProvider) entityRiding).getDraggingInformation();
                 passengerDraggingInformation.setLastShipStoodOn(null);
