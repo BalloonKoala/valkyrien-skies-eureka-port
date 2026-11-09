@@ -250,6 +250,9 @@ class ValkyrienSkiesModFabric : ModInitializer {
             VSCommands.registerServerCommands(dispatcher)
         }
 
+        // Which blocks players placed, so world generated blocks never end up in a ship
+        org.valkyrienskies.mod.common.PlacedBlocks.register()
+
         // registering data loaders
         val loader1 = MassDatapackResolver.loader // the get makes a new instance so get it only once
         val loader2 = VSEntityHandlerDataLoader // the get makes a new instance so get it only once

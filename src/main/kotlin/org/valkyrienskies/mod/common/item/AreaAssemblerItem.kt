@@ -13,6 +13,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.context.UseOnContext
 import net.minecraft.world.level.block.state.BlockState
 import org.joml.primitives.AABBi
+import org.valkyrienskies.mod.common.PlacedBlocks
 import org.valkyrienskies.mod.common.assembly.ShipAssembler
 import org.valkyrienskies.mod.common.dimensionId
 import org.valkyrienskies.mod.common.getLoadedShipManagingPos
@@ -57,8 +58,15 @@ class AreaAssemblerItem(
                         val lowerCorner = BlockPos(blockAABB.minX, blockAABB.minY, blockAABB.minZ)
                         val upperCorner = BlockPos(blockAABB.maxX, blockAABB.maxY, blockAABB.maxZ)
 
-                        val ship = ShipAssembler.assembleToShip(level, BlockPos.betweenClosed(lowerCorner, upperCorner).map{ it.mutable() }.toSet(), 1.0)
-                        ctx.player?.vsSendMessage(Component.translatable("command.valkyrienskies.shipify.success_one", ship.slug.toString()))
+                        val area = BlockPos.betweenClosed(lowerCorner, upperCorner).map{ it.immutable() }.toSet()
+                        val worldGenerated = PlacedBlocks.countWorldGenerated(level, area)
+                        if (worldGenerated > 0) {
+                            // Only blocks players placed can become a ship
+                            ctx.player?.vsSendMessage(Component.translatable("command.valkyrienskies.world_generated", worldGenerated))
+                        } else {
+                            val ship = ShipAssembler.assembleToShip(level, area, 1.0)
+                            ctx.player?.vsSendMessage(Component.translatable("command.valkyrienskies.shipify.success_one", ship.slug.toString()))
+                        }
 
                     }
                     item.vsEditTag {

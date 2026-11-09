@@ -246,7 +246,7 @@ object DevFeatureTest {
             server.runCommand("time set noon")
             server.runCommand("gamemode creative @a")
             world.connection.waitForChunksRender()
-            val cases = listOf("boat", "dock", "huge")
+            val cases = listOf("boat", "dock", "ore", "huge")
             for ((i, case) in cases.withIndex()) {
                 val origin = BlockPos(i * 120, 10, 0)
                 lateinit var helm: BlockPos
@@ -309,7 +309,7 @@ object DevFeatureTest {
                     if (screen == null) "no info screen, showing ${mc.gui.screen()?.javaClass?.simpleName}"
                     else "blocks=${screen.blockCount()} drawn=${screen.shownBlocks()} canAssemble=${screen.canAssemble()}"
                 }
-                log("assembly $case info $info")
+                log("assembly $case info $info red=${context.computeOnClient<Int, RuntimeException> { mc -> (mc.gui.screen() as? org.valkyrienskies.eureka.gui.assembly.ShipAssemblyScreen)?.worldGeneratedCount() ?: -1 }}")
                 server.runOnServer<RuntimeException> { s -> log("assembly $case ships before=${s.overworld().shipObjectWorld.allShips.size}") }
                 DevClientTest.shotOf(context, "assembly_${case}")
                 // Drag the view around with the mouse
@@ -331,6 +331,52 @@ object DevFeatureTest {
                 } else {
                     context.clickScreenButton("gui.cancel")
                 }
+                if (case == "ore") {
+                    // Going around the screen doesn't help: the server checks again
+                    context.runOnClient<RuntimeException> {
+                        net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(org.valkyrienskies.eureka.assembly.AssemblyConfirmPayload(helm))
+                    }
+                    context.waitTicks(10)
+                    server.runOnServer<RuntimeException> { s -> log("assembly ore ships after forcing=${s.overworld().shipObjectWorld.allShips.size}") }
+                    // Break both red blocks for real from beside the boat, then it assembles
+                    server.runOnServer<RuntimeException> { s ->
+                        val p = s.playerList.players[0]
+                        p.abilities.flying = true
+                        p.onUpdateAbilities()
+                        p.teleportTo(s.overworld(), origin.x + 8.5, origin.y.toDouble(), origin.z + 4.5, setOf(), 90f, 20f, true)
+                    }
+                    context.waitTicks(10)
+                    log("assembly ore breaking from ${context.computeOnClient<String, RuntimeException> { mc -> "%.1f %.1f %.1f".format(mc.player!!.x, mc.player!!.y, mc.player!!.z) }}")
+                    for (red in listOf(origin.offset(5, 0, 4), origin.offset(5, 0, 5))) {
+                        context.runOnClient<RuntimeException> { mc ->
+                            val eye = mc.player!!.getEyePosition(1f)
+                            val dx = red.x + 0.5 - eye.x; val dy = red.y + 0.5 - eye.y; val dz = red.z + 0.5 - eye.z
+                            mc.player!!.yRot = Math.toDegrees(Math.atan2(-dx, dz)).toFloat()
+                            mc.player!!.xRot = Math.toDegrees(-Math.atan2(dy, hypot(dx, dz))).toFloat()
+                        }
+                        context.waitTicks(3)
+                        log("assembly ore aiming at ${lookTarget(context)}")
+                        context.input.pressKey { it.keyAttack }
+                        context.waitTicks(6)
+                    }
+                    server.runOnServer<RuntimeException> { s ->
+                        val level = s.overworld()
+                        log("assembly ore broken: ${level.getBlockState(origin.offset(5, 0, 4)).block.descriptionId} ${level.getBlockState(origin.offset(5, 0, 5)).block.descriptionId}")
+                        log("assembly ore helm menu ${s.playerList.players[0].openMenu(level.getBlockEntity(helm) as org.valkyrienskies.eureka.blockentity.ShipHelmBlockEntity)}")
+                    }
+                    context.waitTicks(10)
+                    context.clickScreenButton("gui.vs_eureka.assemble")
+                    context.waitTicks(20)
+                    log("assembly ore after breaking " + context.computeOnClient<String, RuntimeException> { mc ->
+                        val screen = mc.gui.screen() as? org.valkyrienskies.eureka.gui.assembly.ShipAssemblyScreen
+                        "blocks=${screen?.blockCount()} red=${screen?.worldGeneratedCount()} canAssemble=${screen?.canAssemble()}"
+                    })
+                    context.clickScreenButton("gui.vs_eureka.assembly.confirm")
+                    context.waitTicks(30)
+                    var assembled = false
+                    server.runOnServer<RuntimeException> { s -> assembled = s.overworld().getBlockState(helm).isAir }
+                    if (assembled) oreHelm = helm
+                }
                 context.waitTicks(30)
                 server.runOnServer<RuntimeException> { s ->
                     val level = s.overworld()
@@ -339,33 +385,150 @@ object DevFeatureTest {
                 }
                 log("assembly $case screen after=${context.computeOnClient<String, RuntimeException> { it.gui.screen()?.javaClass?.simpleName ?: "none" }}")
             }
+
+            // A block placed with a real right click counts as the player's, one set by the world doesn't
+            val dockDeck = BlockPos(120 + 8, 10, 3)
+            server.runOnServer<RuntimeException> { s ->
+                val p = s.playerList.players[0]
+                p.setItemInHand(InteractionHand.MAIN_HAND, ItemStack(Items.BIRCH_PLANKS, 8))
+                p.teleportTo(s.overworld(), dockDeck.x + 0.5, dockDeck.y + 1.0, dockDeck.z + 2.5, setOf(), 180f, 40f, true)
+                s.overworld().setBlock(BlockPos(120 + 10, 11, 5), Blocks.STONE.defaultBlockState(), 3)
+            }
+            context.waitTicks(15)
+            context.runOnClient<RuntimeException> { mc ->
+                val eye = mc.player!!.getEyePosition(1f)
+                val dx = dockDeck.x + 0.5 - eye.x; val dy = dockDeck.y + 1.0 - eye.y; val dz = dockDeck.z + 0.5 - eye.z
+                mc.player!!.yRot = Math.toDegrees(Math.atan2(-dx, dz)).toFloat()
+                mc.player!!.xRot = Math.toDegrees(-Math.atan2(dy, hypot(dx, dz))).toFloat()
+            }
+            context.waitTicks(3)
+            context.input.pressKey { it.keyUse }
+            context.waitTicks(6)
+            server.runOnServer<RuntimeException> { s ->
+                val level = s.overworld()
+                val placed = dockDeck.above()
+                log("assembly placing ${level.getBlockState(placed).block.descriptionId} placed by player=${org.valkyrienskies.mod.common.PlacedBlocks.isPlaced(level, placed)}" +
+                    " stone set by the world placed by player=${org.valkyrienskies.mod.common.PlacedBlocks.isPlaced(level, BlockPos(120 + 10, 11, 5))}")
+            }
+
+            // The commands, typed by the player
+            fun ships() = context.computeOnClient<Int, RuntimeException> { 0 }.let {
+                var n = 0
+                server.runOnServer<RuntimeException> { s -> n = s.overworld().shipObjectWorld.allShips.size }
+                n
+            }
+            val ore = oreHelm
+            log("assembly commands ships=${ships()} ore boat assembled=${ore != null}")
+            if (ore != null) {
+                server.runOnServer<RuntimeException> { s ->
+                    val p = s.playerList.players[0]
+                    p.teleportTo(s.overworld(), ore.x + 0.5, ore.y + 20.0, ore.z + 0.5, setOf(), 0f, 0f, true)
+                }
+                context.waitTicks(10)
+                // Commands need operator rights, the test player isn't an operator
+                server.runCommand("execute as @p at @p run vs build unassemble 120")
+                context.waitTicks(20)
+                server.runOnServer<RuntimeException> { s ->
+                    val level = s.overworld()
+                    // Where did the helm land, and is it the player's
+                    var found: BlockPos? = null
+                    for (pos in BlockPos.betweenClosed(ore.offset(-12, -80, -12), ore.offset(12, 4, 12))) {
+                        if (level.getBlockState(pos).block.descriptionId == "block.vs_eureka.oak_ship_helm") { found = pos.immutable(); break }
+                    }
+                    log("assembly unassembled helm at=$found placed by player=${found?.let { org.valkyrienskies.mod.common.PlacedBlocks.isPlaced(level, it) }}")
+                }
+                log("assembly after unassemble 120 ships=${ships()}")
+            }
+            server.runCommand("execute as @p at @p run vs build delete all")
+            context.waitTicks(20)
+            log("assembly after delete all ships=${ships()}")
         }
         log("assembly test finished")
     }
 
+    @Volatile
+    private var oreHelm: BlockPos? = null
+
+    private fun lookTarget(context: ClientGameTestContext): String = context.computeOnClient<String, RuntimeException> { mc ->
+        (mc.hitResult as? net.minecraft.world.phys.BlockHitResult)?.blockPos?.let { "$it ${mc.level!!.getBlockState(it).block.descriptionId}" } ?: "${mc.hitResult?.type}"
+    }
+
     // A small boat floating in the air, on its own, touching a dock, or touching a block far too big for a ship
     private fun buildBoat(level: ServerLevel, origin: BlockPos, case: String): BlockPos {
+        // The test builds with setBlock, these stand in for blocks a player placed
+        fun put(pos: BlockPos, state: net.minecraft.world.level.block.state.BlockState, flags: Int = 3) {
+            level.setBlock(pos, state, flags)
+            org.valkyrienskies.mod.common.PlacedBlocks.markPlaced(level, pos)
+        }
         val planks = Blocks.SPRUCE_PLANKS.defaultBlockState()
         for (x in 0 until 5) for (z in 0 until 9) {
-            level.setBlock(origin.offset(x, 0, z), planks, 3)
-            if (x == 0 || x == 4 || z == 0 || z == 8) level.setBlock(origin.offset(x, 1, z), Blocks.OAK_FENCE.defaultBlockState(), 3)
+            put(origin.offset(x, 0, z), planks)
+            if (x == 0 || x == 4 || z == 0 || z == 8) put(origin.offset(x, 1, z), Blocks.OAK_FENCE.defaultBlockState())
         }
-        level.setBlock(origin.offset(2, -1, 4), block("vs_eureka:balloon").defaultBlockState(), 3)
+        put(origin.offset(2, -1, 4), block("vs_eureka:balloon").defaultBlockState())
         val helm = origin.offset(2, 1, 6)
-        level.setBlock(helm, block("vs_eureka:oak_ship_helm").defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH), 3)
+        put(helm, block("vs_eureka:oak_ship_helm").defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH))
         when (case) {
             "dock" -> {
                 // A dock right next to the boat, touching its side
-                for (x in 5 until 13) for (z in 2 until 7) level.setBlock(origin.offset(x, 0, z), Blocks.OAK_PLANKS.defaultBlockState(), 3)
-                for (x in 6 until 13 step 3) for (y in -6 until 0) level.setBlock(origin.offset(x, y, 4), Blocks.OAK_LOG.defaultBlockState(), 3)
+                for (x in 5 until 13) for (z in 2 until 7) put(origin.offset(x, 0, z), Blocks.OAK_PLANKS.defaultBlockState())
+                for (x in 6 until 13 step 3) for (y in -6 until 0) put(origin.offset(x, y, 4), Blocks.OAK_LOG.defaultBlockState())
+            }
+            "ore" -> {
+                // Something no player placed, touching the side of the boat
+                level.setBlock(origin.offset(5, 0, 4), Blocks.COAL_ORE.defaultBlockState(), 3)
+                level.setBlock(origin.offset(5, 0, 5), Blocks.OAK_LOG.defaultBlockState(), 3)
             }
             "huge" -> {
                 // Far more blocks than a ship may have, touching the back of the boat
                 val big = Blocks.OAK_PLANKS.defaultBlockState()
-                for (x in -14 until 19) for (y in -30 until 1) for (z in 9 until 42) level.setBlock(origin.offset(x, y, z), big, 2)
+                for (x in -14 until 19) for (y in -30 until 1) for (z in 9 until 42) put(origin.offset(x, y, z), big, 2)
             }
         }
         return helm
+    }
+
+    /** Placed blocks have to be remembered after the world is saved and opened again, like a server restart. */
+    fun placedSaveTest(context: ClientGameTestContext) {
+        val spot = BlockPos(3, -60, 3)
+        val worldStone = BlockPos(5, -60, 3)
+        val save = context.worldBuilder().create().use { world ->
+            val server = world.server
+            server.runOnServer<RuntimeException> { s ->
+                val p = s.playerList.players[0]
+                p.setGameMode(GameType.CREATIVE)
+                p.setItemInHand(InteractionHand.MAIN_HAND, ItemStack(Items.OAK_PLANKS, 4))
+                p.teleportTo(s.overworld(), spot.x + 0.5, spot.y.toDouble(), spot.z + 2.5, setOf(), 180f, 50f, true)
+                s.overworld().setBlock(worldStone, Blocks.STONE.defaultBlockState(), 3)
+            }
+            world.connection.waitForChunksRender()
+            context.waitTicks(10)
+            context.runOnClient<RuntimeException> { mc ->
+                val eye = mc.player!!.getEyePosition(1f)
+                val dx = spot.x + 0.5 - eye.x; val dy = spot.y - eye.y; val dz = spot.z + 0.5 - eye.z
+                mc.player!!.yRot = Math.toDegrees(Math.atan2(-dx, dz)).toFloat()
+                mc.player!!.xRot = Math.toDegrees(-Math.atan2(dy, hypot(dx, dz))).toFloat()
+            }
+            context.waitTicks(3)
+            context.input.pressKey { it.keyUse }
+            context.waitTicks(10)
+            server.runOnServer<RuntimeException> { s -> log("placedsave before ${placedState(s.overworld(), spot, worldStone)}") }
+            world.worldSave
+        }
+        save.open().use { world ->
+            context.waitTicks(20)
+            world.server.runOnServer<RuntimeException> { s -> log("placedsave after reopening ${placedState(s.overworld(), spot, worldStone)}") }
+        }
+        log("placedsave finished")
+    }
+
+    private fun placedState(level: ServerLevel, spot: BlockPos, worldStone: BlockPos): String {
+        val placed = level.getBlockState(spot)
+        val stone = level.getBlockState(worldStone)
+        return "placed=${placed.block.descriptionId} byPlayer=${org.valkyrienskies.mod.common.PlacedBlocks.isPlaced(level, spot)} " +
+            "worldGenerated=${org.valkyrienskies.mod.common.PlacedBlocks.isWorldGenerated(level, spot, placed)} | " +
+            "stone byPlayer=${org.valkyrienskies.mod.common.PlacedBlocks.isPlaced(level, worldStone)} " +
+            "worldGenerated=${org.valkyrienskies.mod.common.PlacedBlocks.isWorldGenerated(level, worldStone, stone)}"
     }
 
     class SpeedRun(val name: String, val width: Int, val length: Int, val engines: Int)

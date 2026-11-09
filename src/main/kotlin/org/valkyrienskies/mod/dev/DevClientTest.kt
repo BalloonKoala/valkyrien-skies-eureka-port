@@ -1067,6 +1067,10 @@ class DevClientTest : FabricClientGameTest {
             featureTest(context)
             return
         }
+        if (System.getenv("VS_TEST_PLACED_SAVE") != null) {
+            DevFeatureTest.placedSaveTest(context)
+            return
+        }
         if (System.getenv("VS_TEST_ASSEMBLY") != null) {
             DevFeatureTest.assemblyTest(context)
             return

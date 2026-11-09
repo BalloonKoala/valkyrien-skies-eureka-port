@@ -56,5 +56,9 @@
   "misc.valkyrienskies.create.deployer_working_mode": "Ship Behaviour",
   "misc.valkyrienskies.create.deployer_working_mode.original": "Place on current ship",
   "misc.valkyrienskies.create.deployer_working_mode.in_world": "Place in world",
-  "key.category.valkyrienskies.driving": "Driving"
+  "key.category.valkyrienskies.driving": "Driving",
+  "command.valkyrienskies.build.unassembled": "Turned %s ships back into blocks",
+  "command.valkyrienskies.build.deleted": "Deleted %s ships",
+  "command.valkyrienskies.build.none": "No ships there",
+  "command.valkyrienskies.world_generated": "Can't make a ship: %s blocks here weren't placed by a player"
 }

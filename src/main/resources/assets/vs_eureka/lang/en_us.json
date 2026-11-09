@@ -92,5 +92,7 @@
   "gui.vs_eureka.assembly.check": "Only these blocks are shown. Is anything here that shouldn't be?",
   "gui.vs_eureka.assembly.too_big": "It's touching the ground or something big, so it can't be assembled.",
   "gui.vs_eureka.assembly.help": "Drag to turn, scroll to zoom",
-  "gui.vs_eureka.wiring.cannon": "Cannon"
+  "gui.vs_eureka.wiring.cannon": "Cannon",
+  "gui.vs_eureka.assembly.world_generated": "%s blocks in red weren't placed by a player. Break them, then try again.",
+  "info.vs_eureka.world_generated": "Can't assemble: %s blocks touching it weren't placed by a player"
 }

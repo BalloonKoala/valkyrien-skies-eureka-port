@@ -11,6 +11,7 @@ import net.minecraft.world.item.context.UseOnContext
 import net.minecraft.world.level.block.state.BlockState
 import org.valkyrienskies.core.util.datastructures.DenseBlockPosSet
 import org.valkyrienskies.mod.api.toBlockPos
+import org.valkyrienskies.mod.common.PlacedBlocks
 import org.valkyrienskies.mod.common.assembly.ShipAssembler
 import org.valkyrienskies.mod.common.isChunkInShipyard
 
@@ -37,10 +38,17 @@ class ShipAssemblerItem(properties: Properties) : Item(properties) {
                     }
                 }
 
-                val shipData = ShipAssembler.assembleToShip(level, set.map { it.toBlockPos() }.toSet(), 1.0)
-                ctx.player?.vsSendMessage(
-                    Component.translatable("command.valkyrienskies.shipify.success_one", shipData.slug.toString())
-                )
+                val blocks = set.map { it.toBlockPos() }.toSet()
+                val worldGenerated = PlacedBlocks.countWorldGenerated(level, blocks)
+                if (worldGenerated > 0) {
+                    // Only blocks players placed can become a ship
+                    ctx.player?.vsSendMessage(Component.translatable("command.valkyrienskies.world_generated", worldGenerated))
+                } else {
+                    val shipData = ShipAssembler.assembleToShip(level, blocks, 1.0)
+                    ctx.player?.vsSendMessage(
+                        Component.translatable("command.valkyrienskies.shipify.success_one", shipData.slug.toString())
+                    )
+                }
             }
         }
 

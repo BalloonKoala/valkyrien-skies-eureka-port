@@ -121,6 +121,28 @@ Pressing **Assemble** on a helm doesn't build the ship straight away anymore. Yo
 
 Press **Assemble** under the info to build the ship, or **Cancel** to go fix it. If it's touching the ground or something huge, the count turns red and Assemble is greyed out.
 
+### 🧱 Only your own blocks become ships
+The game remembers every block players place. A ship can only be made of those, so a boat can't grab the ground, a tree or a cave by accident:
+
+- Blocks touching your boat that no player placed show up **red** in the Ship Info screen, and Assemble stays greyed out
+- Break the red blocks and try again
+- VS's creative Ship Assembler and Area Assembler tools follow the same rule
+- Ships you take apart count as yours, so you can assemble them again
+
+In chunks from before this update the game can't tell who placed what, so there it only stops blocks nobody builds boats from, like ores and spawners.
+
+### 🧹 Clean-up commands
+For operators, the same as `/vs delete`:
+
+| Command | What it does |
+|---|---|
+| `/vs build unassemble all` | Turns every ship back into blocks, right where it is |
+| `/vs build unassemble 50` | The same, for ships within 50 blocks of you |
+| `/vs build delete all` | Deletes every ship, with every block on it |
+| `/vs build delete 50` | The same, for ships within 50 blocks of you |
+
+Any number works in place of 50.
+
 ### 🚀 Engines that scale with your ship
 Every engine makes you faster, and heavier ships get less out of each one. Longer ships also have a lower top speed:
 
@@ -261,6 +283,7 @@ Any balloon plus any dye. This one is shapeless too.
 - A button fires everything it's touching, like any redstone. Keep each button touching only its own cannon, or skip the button and wire the cannon to a seat.
 - A button on the deck also powers the block under it, so a cannon directly below that block will fire too.
 - A ship only moves while every chunk under it is loaded. Very long ships need a big view distance on the server.
+- Blocks moved by pistons, placed by dispensers or with `/setblock` don't count as placed by a player.
 
 ## ❤️ Credits
 

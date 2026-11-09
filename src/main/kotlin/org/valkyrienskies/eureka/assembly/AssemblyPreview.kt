@@ -16,10 +16,12 @@ import org.valkyrienskies.mod.common.getShipManagingPos
 
 /**
  * Everything that would become the ship, sent to the player before anything gets assembled. [blocks] are packed
- * block positions in the world. When [complete] is false the search stopped after [limit] blocks.
+ * block positions in the world. [worldGenerated] are blocks touching it that no player placed, which stop it from
+ * being assembled. When [complete] is false the search stopped after [limit] blocks.
  */
-class AssemblyPreviewPayload(val helm: BlockPos, val blocks: LongArray, val complete: Boolean, val limit: Int) :
-    CustomPacketPayload {
+class AssemblyPreviewPayload(
+    val helm: BlockPos, val blocks: LongArray, val worldGenerated: LongArray, val complete: Boolean, val limit: Int
+) : CustomPacketPayload {
     override fun type() = TYPE
 
     companion object {
@@ -30,10 +32,11 @@ class AssemblyPreviewPayload(val helm: BlockPos, val blocks: LongArray, val comp
             { payload, buf ->
                 buf.writeBlockPos(payload.helm)
                 buf.writeLongArray(payload.blocks)
+                buf.writeLongArray(payload.worldGenerated)
                 buf.writeBoolean(payload.complete)
                 buf.writeVarInt(payload.limit)
             },
-            { buf -> AssemblyPreviewPayload(buf.readBlockPos(), buf.readLongArray(), buf.readBoolean(), buf.readVarInt()) }
+            { buf -> AssemblyPreviewPayload(buf.readBlockPos(), buf.readLongArray(), buf.readLongArray(), buf.readBoolean(), buf.readVarInt()) }
         )
     }
 }
@@ -87,11 +90,14 @@ object AssemblyPreview {
         if (last != null && now - last in 0 until COOLDOWN_TICKS) return
         lastRequest[player] = now
         val limit = limit()
-        val (blocks, complete) = ShipAssembler.findBlocks(level, helm.blockPos, limit, helm::canAssemble)
-        val packed = LongArray(blocks.size)
-        var i = 0
-        for (pos in blocks) packed[i++] = pos.asLong()
-        ServerPlayNetworking.send(player, AssemblyPreviewPayload(helm.blockPos, packed, complete, limit))
+        val found = ShipAssembler.findBlocks(level, helm.blockPos, limit, helm::canAssemble)
+        val packed = found.blocks.map { it.asLong() }.toLongArray()
+        // As many as still fit in the packet when it's touching a lot of ground
+        val worldGenerated = found.worldGenerated.take(MAX_PREVIEW_BLOCKS - packed.size.coerceAtMost(MAX_PREVIEW_BLOCKS))
+            .map { it.asLong() }.toLongArray()
+        ServerPlayNetworking.send(
+            player, AssemblyPreviewPayload(helm.blockPos, packed, worldGenerated, found.complete, limit)
+        )
     }
 
     private fun confirm(player: ServerPlayer, helmPos: BlockPos) {

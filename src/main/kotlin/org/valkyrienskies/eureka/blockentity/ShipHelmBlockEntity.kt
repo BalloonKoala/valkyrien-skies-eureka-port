@@ -165,12 +165,19 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
         val blockState = level.getBlockState(blockPos)
         if (blockState.block !is ShipHelmBlock) return
 
-        val builtShip = ShipAssembler.collectBlocks(level, blockPos, ::canAssemble)
-
-        if (builtShip == null) {
+        val found = ShipAssembler.findBlocks(level, blockPos, EurekaConfig.SERVER.maxShipBlocks, ::canAssemble)
+        if (!found.complete) {
             player.sendOverlayMessage(Component.translatable("info.vs_eureka.too_big", EurekaConfig.SERVER.maxShipBlocks))
             logger.warn("Failed to assemble to large of a ship for ${player.name.string}")
+            return
         }
+        // Only blocks players placed can become a ship
+        if (found.worldGenerated.isNotEmpty()) {
+            player.sendOverlayMessage(Component.translatable("info.vs_eureka.world_generated", found.worldGenerated.size))
+            return
+        }
+        val builtShip = org.valkyrienskies.mod.common.assembly.ShipAssembler.assembleToShip(level, found.blocks)
+        EurekaShipControl.deferUntilLoaded(builtShip) { it.playerBuilt = true }
     }
 
     /** Blocks that become part of the ship when they touch it. The assembly preview has to match this. */
@@ -195,7 +202,8 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
             level as ServerLevel,
             ship,
             this.blockPos,
-            BlockPos.containing(inWorld.x, inWorld.y, inWorld.z)
+            BlockPos.containing(inWorld.x, inWorld.y, inWorld.z),
+            control.playerBuilt
         )
         // ship.die() TODO i think we do need this no? or autodetect on all air
 

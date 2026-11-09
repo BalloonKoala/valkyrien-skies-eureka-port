@@ -22,6 +22,9 @@ object EurekaMod {
         EurekaWeights.register()
         ShipWiring.register()
         AssemblyPreview.register()
+        net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
+            org.valkyrienskies.eureka.command.BuildCommand.register(dispatcher)
+        }
         ValkyrienSkiesMod.vsCore.registerAttachment(EurekaShipControl::class.java)
     }
 

@@ -38,7 +38,8 @@ object AssemblyPreviewClient {
 }
 
 /** One block of the preview, with the faces that touch another solid block of the ship left out. */
-class PreviewBlock(val x: Int, val y: Int, val z: Int, val parts: List<BlockStateModelPart>, val tints: IntArray)
+/** [worldGenerated] blocks are drawn in red, no player placed them. */
+class PreviewBlock(val x: Int, val y: Int, val z: Int, val parts: List<BlockStateModelPart>, val tints: IntArray, val worldGenerated: Boolean)
 
 /** The blocks of an assembly preview, ready to draw. Built once when the preview opens. */
 class PreviewModel(val blocks: List<PreviewBlock>, val center: Vector3d, val radius: Double, val sizeX: Int, val sizeY: Int, val sizeZ: Int) {
@@ -47,13 +48,16 @@ class PreviewModel(val blocks: List<PreviewBlock>, val center: Vector3d, val rad
 
         fun build(minecraft: Minecraft, payload: AssemblyPreviewPayload): PreviewModel {
             val level = minecraft.level
-            val positions = HashSet<Long>(payload.blocks.size * 2)
-            payload.blocks.forEach { positions.add(it) }
-            if (level == null || payload.blocks.isEmpty()) return PreviewModel(emptyList(), Vector3d(), 1.0, 0, 0, 0)
+            val all = payload.blocks + payload.worldGenerated
+            val positions = HashSet<Long>(all.size * 2)
+            all.forEach { positions.add(it) }
+            val natural = HashSet<Long>(payload.worldGenerated.size * 2)
+            payload.worldGenerated.forEach { natural.add(it) }
+            if (level == null || all.isEmpty()) return PreviewModel(emptyList(), Vector3d(), 1.0, 0, 0, 0)
 
             var minX = Int.MAX_VALUE; var minY = Int.MAX_VALUE; var minZ = Int.MAX_VALUE
             var maxX = Int.MIN_VALUE; var maxY = Int.MIN_VALUE; var maxZ = Int.MIN_VALUE
-            for (packed in payload.blocks) {
+            for (packed in all) {
                 val x = BlockPos.getX(packed); val y = BlockPos.getY(packed); val z = BlockPos.getZ(packed)
                 minX = minOf(minX, x); minY = minOf(minY, y); minZ = minOf(minZ, z)
                 maxX = maxOf(maxX, x); maxY = maxOf(maxY, y); maxZ = maxOf(maxZ, z)
@@ -67,9 +71,9 @@ class PreviewModel(val blocks: List<PreviewBlock>, val center: Vector3d, val rad
             val random = RandomSource.create()
             val pos = BlockPos.MutableBlockPos()
             val blocks = ArrayList<PreviewBlock>()
-            for (packed in payload.blocks) {
+            for (packed in all) {
                 try {
-                    addBlock(minecraft, level, models, random, pos.set(packed), packed, positions, blocks)
+                    addBlock(minecraft, level, models, random, pos.set(packed), packed, positions, packed in natural, blocks)
                 } catch (e: RuntimeException) {
                     // Some modded block that can't be drawn this way, the rest of the preview still shows
                 }
@@ -85,6 +89,7 @@ class PreviewModel(val blocks: List<PreviewBlock>, val center: Vector3d, val rad
             pos: BlockPos,
             packed: Long,
             positions: Set<Long>,
+            worldGenerated: Boolean,
             blocks: MutableList<PreviewBlock>
         ) {
             run {
@@ -95,7 +100,7 @@ class PreviewModel(val blocks: List<PreviewBlock>, val center: Vector3d, val rad
                     val next = BlockPos.offset(packed, direction)
                     if (next in positions && level.getBlockState(BlockPos.of(next)).isSolidRender) hidden.add(direction)
                 }
-                if (hidden.size == Direction.entries.size) return
+                if (hidden.size == Direction.entries.size && !worldGenerated) return
                 val parts = ArrayList<BlockStateModelPart>()
                 random.setSeed(state.getSeed(pos))
                 models.get(state).collectParts(random, parts)
@@ -103,7 +108,7 @@ class PreviewModel(val blocks: List<PreviewBlock>, val center: Vector3d, val rad
                 val sources = minecraft.blockColors.getTintSources(state)
                 val tints = IntArray(sources.size) { sources[it].colorInWorld(state, level, pos) }
                 blocks.add(PreviewBlock(
-                    pos.x, pos.y, pos.z, if (hidden.isEmpty()) parts else parts.map { CulledPart(it, hidden) }, tints
+                    pos.x, pos.y, pos.z, if (hidden.isEmpty()) parts else parts.map { CulledPart(it, hidden) }, tints, worldGenerated
                 ))
             }
         }
@@ -178,7 +183,39 @@ class AssemblyPreviewRenderer : PictureInPictureRenderer<AssemblyPreviewRenderSt
             collector.submitBlockModel(poseStack, type, block.parts, block.tints, light, OverlayTexture.NO_OVERLAY, 0)
             poseStack.popPose()
         }
+        // Blocks no player placed glow red, so it's plain what's in the way
+        val red = model.blocks.filter { it.worldGenerated }
+        if (red.isNotEmpty()) {
+            collector.submitCustomGeometry(poseStack, RenderTypes.debugFilledBox()) { pose, consumer ->
+                for (block in red) {
+                    redBox(pose, consumer, (block.x - model.center.x).toFloat(), (block.y - model.center.y).toFloat(),
+                        (block.z - model.center.z).toFloat())
+                }
+            }
+        }
     }
 
     override fun getTextureLabel() = "ship assembly preview"
+
+    private fun redBox(pose: PoseStack.Pose, consumer: com.mojang.blaze3d.vertex.VertexConsumer, x: Float, y: Float, z: Float) {
+        val e = 0.01f
+        val x0 = x - e; val y0 = y - e; val z0 = z - e
+        val x1 = x + 1 + e; val y1 = y + 1 + e; val z1 = z + 1 + e
+        fun quad(ax: Float, ay: Float, az: Float, bx: Float, by: Float, bz: Float, cx: Float, cy: Float, cz: Float, dx: Float, dy: Float, dz: Float) {
+            consumer.addVertex(pose, ax, ay, az).setColor(RED_BOX)
+            consumer.addVertex(pose, bx, by, bz).setColor(RED_BOX)
+            consumer.addVertex(pose, cx, cy, cz).setColor(RED_BOX)
+            consumer.addVertex(pose, dx, dy, dz).setColor(RED_BOX)
+        }
+        quad(x0, y0, z0, x1, y0, z0, x1, y0, z1, x0, y0, z1)
+        quad(x0, y1, z0, x0, y1, z1, x1, y1, z1, x1, y1, z0)
+        quad(x0, y0, z0, x0, y1, z0, x1, y1, z0, x1, y0, z0)
+        quad(x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1)
+        quad(x0, y0, z0, x0, y0, z1, x0, y1, z1, x0, y1, z0)
+        quad(x1, y0, z0, x1, y1, z0, x1, y1, z1, x1, y0, z1)
+    }
+
+    private companion object {
+        const val RED_BOX = 0x99FF2020.toInt()
+    }
 }

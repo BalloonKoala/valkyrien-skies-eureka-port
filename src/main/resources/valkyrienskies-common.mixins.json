@@ -125,7 +125,9 @@
     "feature.clip_replace.MixinBlockGetter",
     "feature.clip_replace.MixinClipContext",
     "feature.ai.node_evaluator.WalkNodeEvaluatorInvoker",
-    "feature.ai.node_evaluator.MixinPathfindingContext"
+    "feature.ai.node_evaluator.MixinPathfindingContext",
+    "feature.placed_blocks.MixinBlockItemPlaced",
+    "feature.placed_blocks.MixinLevelChunkPlaced"
   ],
   "client": [
     "accessors.client.render.LevelRendererAccessor",

@@ -26,6 +26,8 @@ This project is a modified version of **Valkyrien Skies 2.4.11** and **VS Eureka
 - Cannon block and cannonball, with a barrel that can be aimed in any direction
 - Cannons can be wired straight to a helm or cushion and fired with a key, no wireless button needed
 - Ship Info screen before assembling, with the block count and a 3D view of what would become the ship
+- Blocks players place are remembered per chunk, and only those can become a ship, through the helm or VS's assembler items
+- `/vs build unassemble` and `/vs build delete`, for all ships or the ones within a distance
 - Engine speed depends on the number of engines, the mass and the length of the ship, with new settings for it
 - Ships hold themselves level harder at high speed
 - Wireless Buttons in 12 wood types

@@ -16,6 +16,7 @@ import org.valkyrienskies.core.util.datastructures.DenseBlockPosSet
 import org.valkyrienskies.eureka.EurekaConfig
 import org.valkyrienskies.mod.common.assembly.ShipAssembler.assembleToShip
 import org.valkyrienskies.mod.common.executeIf
+import org.valkyrienskies.mod.common.PlacedBlocks
 import org.valkyrienskies.mod.common.isTickingChunk
 import org.valkyrienskies.mod.common.networking.PacketRestartChunkUpdates
 import org.valkyrienskies.mod.common.networking.PacketStopChunkUpdates
@@ -42,14 +43,20 @@ object ShipAssembler {
     }
 
     /**
-     * The blocks [collectBlocks] would turn into a ship, without assembling anything. Stops once there are more than
-     * [limit] of them, a limit of 0 or less means no limit. The second value is false when it stopped there.
+     * What a helm would turn into a ship. [worldGenerated] are blocks touching it that no player placed: the search
+     * doesn't go through them, and a ship touching any of them can't be assembled. [complete] is false when the search
+     * stopped after [limit] blocks, a limit of 0 or less means no limit.
      */
-    fun findBlocks(level: ServerLevel, center: BlockPos, limit: Int, predicate: (BlockState) -> Boolean): Pair<Set<BlockPos>, Boolean> {
+    class FoundBlocks(val blocks: Set<BlockPos>, val worldGenerated: Set<BlockPos>, val complete: Boolean)
+
+    fun findBlocks(level: ServerLevel, center: BlockPos, limit: Int, predicate: (BlockState) -> Boolean): FoundBlocks {
         val blocks = mutableListOf<BlockPos>()
         blocks.add(center)
-        val complete = bfs(level, center, blocks, predicate, limit, false)
-        return blocks.toSet() to complete
+        val worldGenerated = HashSet<BlockPos>()
+        val complete = bfs(level, center, blocks, predicate, limit, false) { pos, state ->
+            PlacedBlocks.isWorldGenerated(level, pos, state).also { if (it) worldGenerated.add(pos.immutable()) }
+        }
+        return FoundBlocks(blocks.toSet(), worldGenerated, complete)
     }
 
     private fun roundToNearestMultipleOf(number: Double, multiple: Double) = multiple * round(number / multiple)
@@ -100,7 +107,11 @@ object ShipAssembler {
         }
     }
 
-    fun unfillShip(level: ServerLevel, ship: ServerShip, shipCenter: BlockPos, center: BlockPos) {
+    /**
+     * Puts a ship's blocks back into the world. They count as placed by a player afterwards, except blocks only the world
+     * makes (like ores) out of a ship that wasn't assembled from player placed blocks, [playerBuilt].
+     */
+    fun unfillShip(level: ServerLevel, ship: ServerShip, shipCenter: BlockPos, center: BlockPos, playerBuilt: Boolean = false) {
         ship.isStatic = true
 
         val rotation: Rotation = ship.transform.shipToWorldRotation
@@ -166,6 +177,9 @@ object ShipAssembler {
 
                             toUpdate.add(Triple(inShipPos, inWorldBlockPos, state))
                             level.relocateBlock(inShipPos, inWorldBlockPos, false, null, rotation)
+                            if (playerBuilt || !state.`is`(PlacedBlocks.WORLD_GENERATED)) {
+                                PlacedBlocks.markPlaced(level, inWorldBlockPos)
+                            }
                         }
                     }
                 }
@@ -196,7 +210,8 @@ object ShipAssembler {
         blocks: MutableList<BlockPos>,
         predicate: (BlockState) -> Boolean,
         limit: Int = EurekaConfig.SERVER.maxShipBlocks,
-        log: Boolean = true
+        log: Boolean = true,
+        stopAt: ((BlockPos, BlockState) -> Boolean)? = null
     ): Boolean {
 
         val blacklist = DenseBlockPosSet()
@@ -207,7 +222,10 @@ object ShipAssembler {
         while (!stack.isEmpty) {
             val pos = stack.pop()
 
-            if (predicate(level.getBlockState(pos))) {
+            val state = level.getBlockState(pos)
+            if (predicate(state)) {
+                // Noted down, but not part of the ship and not searched past
+                if (stopAt != null && stopAt(pos, state)) continue
                 blocks.add(BlockPos(pos.x, pos.y, pos.z))
                 directions(pos) {
                     if (!blacklist.contains(it.x, it.y, it.z)) {

@@ -38,6 +38,7 @@ class ShipAssemblyScreen(private val payload: AssemblyPreviewPayload, private va
 
     private val count get() = payload.blocks.size
     private val tooBig get() = !payload.complete
+    private val worldGenerated get() = payload.worldGenerated.size
 
     override fun init() {
         val viewWidth = min(width - 2 * MARGIN, MAX_VIEW_WIDTH)
@@ -54,7 +55,7 @@ class ShipAssemblyScreen(private val payload: AssemblyPreviewPayload, private va
             Button.builder(Component.translatable("gui.vs_eureka.assembly.confirm")) { confirm() }
                 .bounds(viewLeft, buttonsTop, buttonWidth, BUTTON_HEIGHT).build()
         )
-        assembleButton.active = !tooBig && count > 0
+        assembleButton.active = !tooBig && count > 0 && worldGenerated == 0
         addRenderableWidget(
             Button.builder(Component.translatable("gui.cancel")) { onClose() }
                 .bounds(viewLeft + buttonWidth + BUTTON_GAP, buttonsTop, buttonWidth, BUTTON_HEIGHT).build()
@@ -93,8 +94,14 @@ class ShipAssemblyScreen(private val payload: AssemblyPreviewPayload, private va
             font, Component.translatable("gui.vs_eureka.assembly.size", model.sizeX, model.sizeY, model.sizeZ),
             viewLeft, infoTop + LINE, TEXT_COLOR, true
         )
-        val hint = if (tooBig) TOO_BIG_TEXT else CHECK_TEXT
-        graphics.text(font, hint, viewLeft, infoTop + 2 * LINE, if (tooBig) WARNING_COLOR else HELP_COLOR, true)
+        when {
+            tooBig -> graphics.text(font, TOO_BIG_TEXT, viewLeft, infoTop + 2 * LINE, WARNING_COLOR, true)
+            worldGenerated > 0 -> graphics.text(
+                font, Component.translatable("gui.vs_eureka.assembly.world_generated", worldGenerated),
+                viewLeft, infoTop + 2 * LINE, WARNING_COLOR, true
+            )
+            else -> graphics.text(font, CHECK_TEXT, viewLeft, infoTop + 2 * LINE, HELP_COLOR, true)
+        }
     }
 
     private fun overView(x: Double, y: Double) = x >= viewLeft && x < viewRight && y >= viewTop && y < viewBottom
@@ -139,6 +146,7 @@ class ShipAssemblyScreen(private val payload: AssemblyPreviewPayload, private va
     fun blockCount() = count
     fun shownBlocks() = model.blocks.size
     fun canAssemble() = assembleButton.active
+    fun worldGeneratedCount() = worldGenerated
 
     private companion object {
         const val MARGIN = 20

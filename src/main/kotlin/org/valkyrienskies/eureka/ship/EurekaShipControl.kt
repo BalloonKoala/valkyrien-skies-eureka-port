@@ -45,6 +45,7 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
     var aligning = false
     var disassembling = false // Disassembling also affects position
     var enginesPaused = false // No engine on this ship burns fuel or gives power while this is set
+    var playerBuilt = false // Assembled only from blocks players placed, its blocks count as theirs when taken apart
     private var physConsumption = 0f
     private val anchored get() = anchorsActive > 0
 
