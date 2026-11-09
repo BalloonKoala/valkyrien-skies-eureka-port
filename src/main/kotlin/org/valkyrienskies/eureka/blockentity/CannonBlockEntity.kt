@@ -12,7 +12,6 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.util.Mth
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.DispenserBlock
 import net.minecraft.world.level.block.entity.DispenserBlockEntity
@@ -21,6 +20,7 @@ import net.minecraft.world.level.storage.ValueInput
 import net.minecraft.world.level.storage.ValueOutput
 import org.joml.Vector3d
 import org.valkyrienskies.eureka.EurekaBlockEntities
+import org.valkyrienskies.eureka.item.CannonballItem
 import org.valkyrienskies.eureka.wiring.Wireable
 import org.valkyrienskies.mod.common.getShipManagingPos
 import org.valkyrienskies.mod.api.toJOML
@@ -79,7 +79,8 @@ class CannonBlockEntity(pos: BlockPos, state: BlockState) :
 
     override fun getDefaultName(): Component = Component.translatable("container.vs_eureka.cannon")
 
-    override fun canPlaceItem(slot: Int, stack: ItemStack): Boolean = stack.`is`(Items.TNT)
+    // Cannons only fire cannonballs
+    override fun canPlaceItem(slot: Int, stack: ItemStack): Boolean = stack.item is CannonballItem
 
     private val facing: Direction get() = blockState.getValueOrElse(DispenserBlock.FACING, Direction.NORTH)
 

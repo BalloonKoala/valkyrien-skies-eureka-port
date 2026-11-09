@@ -78,6 +78,23 @@ class ShipHelmBlock(properties: Properties, val woodType: IWoodType) : BaseEntit
         }
     }
 
+    companion object {
+        /**
+         * Crouch and right click opens a helm whatever is in your hands. Minecraft normally uses the held item instead
+         * when you crouch, so with a block in either hand the helm never opened and the block got placed.
+         */
+        fun registerCrouchToOpen() {
+            net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register { player, level, hand, hit ->
+                if (hand != net.minecraft.world.InteractionHand.MAIN_HAND || !player.isSecondaryUseActive || player.isSpectator) {
+                    return@register InteractionResult.PASS
+                }
+                val helm = level.getBlockEntity(hit.blockPos) as? ShipHelmBlockEntity ?: return@register InteractionResult.PASS
+                if (!level.isClientSide) player.openMenu(helm)
+                InteractionResult.SUCCESS
+            }
+        }
+    }
+
     override fun useWithoutItem(
         state: BlockState,
         level: Level,

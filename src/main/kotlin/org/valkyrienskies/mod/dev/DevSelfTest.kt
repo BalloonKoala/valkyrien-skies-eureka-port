@@ -443,7 +443,7 @@ object DevSelfTest {
         level.setBlock(rig.cannon, block("vs_eureka:cannon").defaultBlockState().setValue(BlockStateProperties.FACING, Direction.SOUTH), 3)
         level.setBlock(rig.cannonButton, wirelessButton(false), 3)
         level.setBlock(rig.shown, wirelessButton(true), 3)
-        (level.getBlockEntity(rig.cannon) as CannonBlockEntity).setItem(0, ItemStack(Items.TNT, 3))
+        (level.getBlockEntity(rig.cannon) as CannonBlockEntity).setItem(0, ItemStack(org.valkyrienskies.eureka.EurekaItems.SMALL_CANNONBALL.get(), 3))
         watched = rig
         return rig
     }
@@ -513,7 +513,7 @@ object DevSelfTest {
         level.setBlock(cannonD, east, 3)
         level.setBlock(cannonE, east, 3)
         level.setBlock(cannonF, east, 3)
-        for (cannon in rig.cannons) (level.getBlockEntity(cannon) as CannonBlockEntity).setItem(0, ItemStack(Items.TNT, 8))
+        for (cannon in rig.cannons) (level.getBlockEntity(cannon) as CannonBlockEntity).setItem(0, ItemStack(org.valkyrienskies.eureka.EurekaItems.SMALL_CANNONBALL.get(), 8))
         for (button in rig.buttons.dropLast(1)) level.setBlock(button, wirelessButton(false), 3)
         level.setBlock(
             rig.buttons.last(),

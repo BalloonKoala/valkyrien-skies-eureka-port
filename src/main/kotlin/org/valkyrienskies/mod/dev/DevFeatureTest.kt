@@ -131,7 +131,7 @@ object DevFeatureTest {
                 val level = s.overworld()
                 caught = null
                 val be = level.getBlockEntity(spot) as CannonBlockEntity
-                be.setItem(0, ItemStack(Items.TNT, 4))
+                be.setItem(0, ItemStack(org.valkyrienskies.eureka.EurekaItems.SMALL_CANNONBALL.get(), 4))
                 level.setBlock(spot.east(), Blocks.REDSTONE_BLOCK.defaultBlockState(), 3)
             }
             context.waitTicks(8)
@@ -529,6 +529,84 @@ object DevFeatureTest {
             "worldGenerated=${org.valkyrienskies.mod.common.PlacedBlocks.isWorldGenerated(level, spot, placed)} | " +
             "stone byPlayer=${org.valkyrienskies.mod.common.PlacedBlocks.isPlaced(level, worldStone)} " +
             "worldGenerated=${org.valkyrienskies.mod.common.PlacedBlocks.isWorldGenerated(level, worldStone, stone)}"
+    }
+
+    /** The cannonball recipes, what a cannon will take, and how big each size of cannonball blows up. */
+    fun cannonballTest(context: ClientGameTestContext) {
+        context.worldBuilder().create().use { world ->
+            val server = world.server
+            server.runCommand("gamerule doDaylightCycle false")
+            server.runOnServer<RuntimeException> { s ->
+                val level = s.overworld()
+                val iron = ItemStack(Items.IRON_INGOT); val tnt = ItemStack(Items.TNT); val gun = ItemStack(Items.GUNPOWDER)
+                val e = ItemStack.EMPTY
+                val small = ItemStack(org.valkyrienskies.eureka.EurekaItems.SMALL_CANNONBALL.get())
+                val medium = ItemStack(org.valkyrienskies.eureka.EurekaItems.MEDIUM_CANNONBALL.get())
+                fun craft(tag: String, vararg grid: ItemStack) {
+                    val input = net.minecraft.world.item.crafting.CraftingInput.of(3, 3, grid.map { it.copy() })
+                    val found = s.recipeManager.getRecipeFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING, input, level)
+                    val result = found.map { it.value().assemble(input) }.orElse(ItemStack.EMPTY)
+                    log("cannonball recipe $tag -> ${if (result.isEmpty) "nothing" else "${result.count} ${result.item}"} (stacks to ${result.maxStackSize})")
+                }
+                craft("small", e, iron, e, iron, tnt, iron, e, iron, e)
+                craft("medium", gun, iron, gun, iron, small, iron, gun, iron, gun)
+                craft("large", tnt, iron, tnt, iron, medium, iron, tnt, iron, tnt)
+                craft("small with iron in the corners", iron, e, iron, e, tnt, e, iron, e, iron)
+                craft("medium without the small one", gun, iron, gun, iron, tnt, iron, gun, iron, gun)
+            }
+
+            // Fire each size at a wall of planks and count the blocks it takes out
+            val cannon = BlockPos(0, -50, 0)
+            fun wall(level: ServerLevel) {
+                for (x in 12..21) for (y in -62..-38) for (z in -12..12) {
+                    level.setBlock(BlockPos(x, y, z), Blocks.OAK_PLANKS.defaultBlockState(), 2)
+                }
+                for (e in level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity::class.java, net.minecraft.world.phys.AABB(-5.0, -70.0, -20.0, 40.0, -20.0, 20.0))) e.discard()
+            }
+            fun count(level: ServerLevel): Int {
+                var n = 0
+                for (x in 12..21) for (y in -62..-38) for (z in -12..12) if (!level.getBlockState(BlockPos(x, y, z)).`is`(Blocks.OAK_PLANKS)) n++
+                return n
+            }
+            server.runOnServer<RuntimeException> { s ->
+                val level = s.overworld()
+                for (y in -60 until -50) level.setBlock(BlockPos(0, y, 0), Blocks.STONE.defaultBlockState(), 3)
+                level.setBlock(cannon, block("vs_eureka:cannon").defaultBlockState().setValue(BlockStateProperties.FACING, Direction.EAST), 3)
+                val be = level.getBlockEntity(cannon) as CannonBlockEntity
+                log("cannonball cannon takes tnt=${be.canPlaceItem(0, ItemStack(Items.TNT))} small=${be.canPlaceItem(0, ItemStack(org.valkyrienskies.eureka.EurekaItems.SMALL_CANNONBALL.get()))}")
+                val p = s.playerList.players[0]
+                p.setGameMode(GameType.SPECTATOR)
+                p.teleportTo(level, 6.5, -30.0, -24.0, setOf(), 0f, 30f, true)
+            }
+            world.connection.waitForChunksRender()
+            val shots = listOf(
+                "tnt" to ItemStack(Items.TNT),
+                "small" to ItemStack(org.valkyrienskies.eureka.EurekaItems.SMALL_CANNONBALL.get()),
+                "medium" to ItemStack(org.valkyrienskies.eureka.EurekaItems.MEDIUM_CANNONBALL.get()),
+                "large" to ItemStack(org.valkyrienskies.eureka.EurekaItems.LARGE_CANNONBALL.get())
+            )
+            for ((name, ammo) in shots) {
+                server.runOnServer<RuntimeException> { s ->
+                    val level = s.overworld()
+                    wall(level)
+                    val be = level.getBlockEntity(cannon) as CannonBlockEntity
+                    for (i in 0 until be.containerSize) be.setItem(i, ItemStack.EMPTY)
+                    be.setItem(0, ammo.copy())
+                    level.setBlock(cannon.below(2), Blocks.STONE.defaultBlockState(), 3)
+                    level.setBlock(cannon.north(), Blocks.REDSTONE_BLOCK.defaultBlockState(), 3)
+                }
+                context.waitTicks(40)
+                server.runOnServer<RuntimeException> { s ->
+                    val level = s.overworld()
+                    val be = level.getBlockEntity(cannon) as CannonBlockEntity
+                    log("cannonball shot $name: left in cannon=${be.getItem(0).count} blocks blown out of the wall=${count(level)}")
+                    level.setBlock(cannon.north(), Blocks.AIR.defaultBlockState(), 3)
+                }
+                DevClientTest.shotOf(context, "cannonball_$name")
+                context.waitTicks(10)
+            }
+        }
+        log("cannonball test finished")
     }
 
     class SpeedRun(val name: String, val width: Int, val length: Int, val engines: Int)

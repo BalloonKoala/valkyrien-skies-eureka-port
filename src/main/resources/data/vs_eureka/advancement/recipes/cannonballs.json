@@ -1,0 +1,25 @@
+{
+  "parent": "minecraft:recipes/root",
+  "rewards": {
+    "recipes": [
+      "vs_eureka:small_cannonball",
+      "vs_eureka:medium_cannonball",
+      "vs_eureka:large_cannonball"
+    ]
+  },
+  "criteria": {
+    "has_gold": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {}
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_gold"
+    ]
+  ]
+}

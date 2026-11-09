@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "TIT",
+    "IMI",
+    "TIT"
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "T": "minecraft:tnt",
+    "M": "vs_eureka:medium_cannonball"
+  },
+  "result": {
+    "count": 1,
+    "id": "vs_eureka:large_cannonball"
+  }
+}

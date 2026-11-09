@@ -913,6 +913,62 @@ class DevClientTest : FabricClientGameTest {
         }
     }
 
+    // Crouch and right click the helm on a ship opens it, a plain right click sits down, in survival and in creative
+    private fun helmCheck(context: ClientGameTestContext, server: net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext) {
+        val holdings = listOf(
+            ItemStack.EMPTY to ItemStack.EMPTY, ItemStack(Items.OAK_PLANKS, 4) to ItemStack.EMPTY, ItemStack.EMPTY to ItemStack(Items.SHIELD)
+        )
+        for (mode in listOf(net.minecraft.world.level.GameType.SURVIVAL, net.minecraft.world.level.GameType.CREATIVE)) {
+            for ((holding, offhand) in holdings) {
+                val tag = "${mode.name.lowercase()} hand=${if (holding.isEmpty) "nothing" else holding.item.toString()} offhand=${if (offhand.isEmpty) "nothing" else offhand.item.toString()}"
+                lateinit var helmPos: BlockPos
+                server.runOnServer<RuntimeException> { s ->
+                    val level = s.overworld()
+                    val p = s.playerList.players[0]
+                    p.stopRiding()
+                    p.setGameMode(mode)
+                    p.setItemInHand(InteractionHand.MAIN_HAND, holding.copy())
+                    p.setItemInHand(InteractionHand.OFF_HAND, offhand.copy())
+                    helmPos = DevSelfTest.helm(level)!!.blockPos
+                    DevSelfTest.standNearSeat(level, 0)
+                }
+                context.waitTicks(15)
+                aimAtShipPoint(context, Vector3d(helmPos.x + 0.5, helmPos.y + 0.4, helmPos.z + 0.5))
+                log("helm $tag crosshair ${lookingAt(context)} block=${context.computeOnClient<String, RuntimeException> { mc -> (mc.hitResult as? net.minecraft.world.phys.BlockHitResult)?.blockPos?.let { mc.level!!.getBlockState(it).block.descriptionId } ?: "-" }}")
+                context.input.holdKey { it.keyShift }
+                context.waitTicks(4)
+                context.input.pressKey { it.keyUse }
+                context.waitTicks(8)
+                log("helm $tag crouch click: screen=${context.computeOnClient<String, RuntimeException> { it.gui.screen()?.javaClass?.simpleName ?: "none" }} sneaking=${context.computeOnClient<Boolean, RuntimeException> { it.player!!.isShiftKeyDown }}")
+                context.input.releaseKey { it.keyShift }
+                // Escape only closes the helm, with nothing open it would pause the game
+                if (context.computeOnClient<Boolean, RuntimeException> { it.gui.screen() != null }) {
+                    context.input.pressKey(InputConstants.getKey("key.keyboard.escape"))
+                }
+                context.waitTicks(6)
+                // Take away anything placed against the helm, it would be in the way of the next click
+                server.runOnServer<RuntimeException> { s ->
+                    val level = s.overworld()
+                    for (pos in BlockPos.betweenClosed(helmPos.offset(-1, -1, -1), helmPos.offset(1, 2, 1))) {
+                        if (level.getBlockState(pos).`is`(net.minecraft.world.level.block.Blocks.OAK_PLANKS) && pos.y > helmPos.y - 1) {
+                            level.setBlock(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3)
+                            log("helm $tag a plank had been placed at $pos")
+                        }
+                    }
+                }
+                context.waitTicks(4)
+                aimAtShipPoint(context, Vector3d(helmPos.x + 0.5, helmPos.y + 0.4, helmPos.z + 0.5))
+                context.input.pressKey { it.keyUse }
+                context.waitTicks(8)
+                server.runOnServer<RuntimeException> { s -> log("helm $tag plain click: vehicle=${s.playerList.players[0].vehicle?.type}") }
+                context.input.holdKey { it.keyShift }
+                context.waitTicks(6)
+                context.input.releaseKey { it.keyShift }
+                context.waitTicks(6)
+            }
+        }
+    }
+
     // Two cannons and no wireless buttons: wire them up in the wiring screen and fire them from their seats
     private fun cannonWiringCheck(context: ClientGameTestContext, server: net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext) {
         val g = InputConstants.getKey("key.keyboard.g")
@@ -938,7 +994,7 @@ class DevClientTest : FabricClientGameTest {
             val block = BuiltInRegistries.BLOCK.getValue(Identifier.parse("vs_eureka:cannon"))
             level.setBlock(cannonA, block.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.WEST), 3)
             level.setBlock(cannonB, block.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST), 3)
-            for (pos in listOf(cannonA, cannonB)) (level.getBlockEntity(pos) as org.valkyrienskies.eureka.blockentity.CannonBlockEntity).setItem(0, ItemStack(Items.TNT, 8))
+            for (pos in listOf(cannonA, cannonB)) (level.getBlockEntity(pos) as org.valkyrienskies.eureka.blockentity.CannonBlockEntity).setItem(0, ItemStack(org.valkyrienskies.eureka.EurekaItems.SMALL_CANNONBALL.get(), 8))
             log("cannonwire cushion ${DevSelfTest.placeCushion(level, cushion).javaClass.simpleName}")
             val p = s.playerList.players[0]
             p.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY)
@@ -1040,6 +1096,10 @@ class DevClientTest : FabricClientGameTest {
             }
             server.runOnServer<RuntimeException> { DevSelfTest.startMotion() }
             context.waitTicks(125)
+            if (System.getenv("VS_TEST_HELM") != null) {
+                helmCheck(context, server)
+                return@use
+            }
             if (System.getenv("VS_TEST_CANNON_WIRE") != null) {
                 server.runCommand("gamerule tntExplodes false")
                 cannonWiringCheck(context, server)
@@ -1065,6 +1125,10 @@ class DevClientTest : FabricClientGameTest {
         }
         if (System.getenv("VS_TEST_FEATURES") != null) {
             featureTest(context)
+            return
+        }
+        if (System.getenv("VS_TEST_CANNONBALLS") != null) {
+            DevFeatureTest.cannonballTest(context)
             return
         }
         if (System.getenv("VS_TEST_PLACED_SAVE") != null) {

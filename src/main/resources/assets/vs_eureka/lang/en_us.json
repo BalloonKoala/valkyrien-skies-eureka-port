@@ -94,5 +94,8 @@
   "gui.vs_eureka.assembly.help": "Drag to turn, scroll to zoom",
   "gui.vs_eureka.wiring.cannon": "Cannon",
   "gui.vs_eureka.assembly.world_generated": "%s blocks in red weren't placed by a player. Break them, then try again.",
-  "info.vs_eureka.world_generated": "Can't assemble: %s blocks touching it weren't placed by a player"
+  "info.vs_eureka.world_generated": "Can't assemble: %s blocks touching it weren't placed by a player",
+  "item.vs_eureka.small_cannonball": "Small Cannonball",
+  "item.vs_eureka.medium_cannonball": "Medium Cannonball",
+  "item.vs_eureka.large_cannonball": "Large Cannonball"
 }

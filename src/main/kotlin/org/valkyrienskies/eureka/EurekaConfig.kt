@@ -95,6 +95,15 @@ object EurekaConfig {
         @ConfigEntry(description = "Ships get less steady as they speed up to this many blocks per second, and hold themselves level harder past it, so fast ships don't tip over")
         var stableSpeed = 15.0
 
+        @ConfigEntry(description = "Explosion power of a small cannonball. TNT is 4")
+        var smallCannonballPower = 3.0
+
+        @ConfigEntry(description = "Explosion power of a medium cannonball")
+        var mediumCannonballPower = 6.0
+
+        @ConfigEntry(description = "Explosion power of a large cannonball")
+        var largeCannonballPower = 12.0
+
         @ConfigEntry(description = "Max reverse speed of a ship with engines")
         var maxReverseSpeedFromEngines = 5.0
 

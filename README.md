@@ -60,7 +60,7 @@ Nothing on deck glitches anymore. Tested on a 36 m/s ship with 120 ms of ping:
 - Players with lag no longer shove things around from a spot they aren't really standing in
 
 ### ☸️ A proper captain's wheel
-You stand on the deck with both hands on the wheel, not floating above it, and your mouse is no longer reversed while steering.
+You stand on the deck with both hands on the wheel, not floating above it, and your mouse is no longer reversed while steering. Crouch and right click opens the helm even with something in your hands.
 
 ### 🛋️ Cushions on ships
 Cushions work properly on ships now. Sit on them, break them, and use them as seats anywhere on deck.
@@ -72,10 +72,20 @@ A new block: an iron barrel on a wooden carriage with wheels, sitting on a swive
 
 1. Place it. The barrel points the way you're facing.
 2. **Aim it:** sneak and right click it with an empty hand, then look where it should fire. The barrel follows your view, straight up and straight down included. Let go of sneak to keep it there.
-3. Open it and load **TNT**. It has 9 slots like a dispenser.
-4. Fire it with a redstone pulse, or with a key from your seat (see the Wiring screen below). It uses 1 TNT and fires a cannonball out of the barrel.
+3. Open it and load **cannonballs**. It has 9 slots like a dispenser, and it only fires cannonballs.
+4. Fire it with a redstone pulse, or with a key from your seat (see the Wiring screen below). It fires the first cannonball in it out of the barrel.
 
-The cannonball explodes when it hits something, and it can blow holes in ships. It fires exactly where the barrel points, even while your ship is moving and turning. Each cannon only fires from a signal touching it, so cannons side by side or stacked stay separate.
+There are three sizes, and each one has twice the explosion power of the one before:
+
+| Cannonball | Explosion power | Blocks it blew out of a planks wall |
+|---|---|---|
+| Small | 3 | 6 |
+| Medium | 6 | 21 |
+| Large | 12 | 110 |
+
+TNT has a power of 4, for comparison. Server owners can change all three in `vs_eureka.toml`. The recipes are [below](#recipes).
+
+A cannonball explodes when it hits something, and it can blow holes in ships. It fires exactly where the barrel points, even while your ship is moving and turning. Each cannon only fires from a signal touching it, so cannons side by side or stacked stay separate.
 
 ### 📡 Wireless Buttons
 A button you never touch, in all 12 wood types: oak, spruce, birch, jungle, acacia, dark oak, mangrove, cherry, pale oak, bamboo, crimson and warped. The top is that wood, with a small red rim that glows when it fires.
@@ -180,13 +190,27 @@ Everyone gets a quick hello with the credits and a Discord link when they join.
 <a id="recipes"></a>
 ## 🛠️ Recipes
 
-**All 32 original Eureka recipes are exactly the same as before.** If you know how to craft it in Eureka, you already know how to craft it here. The only additions are the Cannon and the Wireless Buttons. JEI shows every recipe in game.
+**All 32 original Eureka recipes are exactly the same as before.** If you know how to craft it in Eureka, you already know how to craft it here. The only additions are the Cannon, the Cannonballs and the Wireless Buttons. JEI shows every recipe in game.
 
 ### New recipes
 
 **Cannon**
 
 <img src="docs/images/recipes/cannon.png" alt="Cannon recipe" width="512">
+
+**Cannonballs** (they stack to 64)
+
+Small: TNT in the middle, iron ingots on the top, bottom and sides
+
+<img src="docs/images/recipes/small_cannonball.png" alt="Small Cannonball recipe" width="512">
+
+Medium: a small cannonball in the middle, iron ingots on the sides, gunpowder in the corners
+
+<img src="docs/images/recipes/medium_cannonball.png" alt="Medium Cannonball recipe" width="512">
+
+Large: a medium cannonball in the middle, iron ingots on the sides, TNT in the corners
+
+<img src="docs/images/recipes/large_cannonball.png" alt="Large Cannonball recipe" width="512">
 
 **Wireless Button**
 

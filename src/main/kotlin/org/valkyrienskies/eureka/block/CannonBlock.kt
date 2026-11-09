@@ -8,7 +8,8 @@ import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
-import net.minecraft.world.item.Items
+import net.minecraft.world.item.ItemStack
+import org.valkyrienskies.eureka.item.CannonballItem
 import net.minecraft.world.item.context.BlockPlaceContext
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
@@ -26,7 +27,7 @@ import org.valkyrienskies.eureka.entity.Cannonball
 import org.valkyrienskies.mod.common.getShipManagingPos
 
 /**
- * Works like a dispenser that only takes TNT: a redstone pulse fires one out of the barrel as a cannonball.
+ * Works like a dispenser that only takes cannonballs: a redstone pulse or a wired key fires one out of the barrel.
  * The barrel sits on a swivel and can point anywhere. Sneak and right click it, then look where it should fire.
  */
 class CannonBlock(properties: BlockBehaviour.Properties) : DispenserBlock(properties) {
@@ -70,16 +71,17 @@ class CannonBlock(properties: BlockBehaviour.Properties) : DispenserBlock(proper
 
     override fun dispenseFrom(level: ServerLevel, state: BlockState, pos: BlockPos) {
         val cannon = level.getBlockEntity(pos) as? CannonBlockEntity ?: return
-        val slot = (0 until cannon.containerSize).firstOrNull { cannon.getItem(it).`is`(Items.TNT) }
+        // The first cannonball in the cannon, other things in it are never fired
+        val slot = (0 until cannon.containerSize).firstOrNull { cannon.getItem(it).item is CannonballItem }
         if (slot == null) {
             level.levelEvent(DISPENSER_FAIL_EVENT, pos, 0)
             return
         }
-        cannon.removeItem(slot, 1)
-        fire(level, cannon, pos)
+        val ammo = cannon.removeItem(slot, 1)
+        fire(level, cannon, pos, ammo)
     }
 
-    private fun fire(level: ServerLevel, cannon: CannonBlockEntity, pos: BlockPos) {
+    private fun fire(level: ServerLevel, cannon: CannonBlockEntity, pos: BlockPos, ammo: ItemStack) {
         val direction = cannon.direction()
         val muzzle = Vector3d(pos.x + 0.5, pos.y + PIVOT_HEIGHT, pos.z + 0.5).fma(MUZZLE_DISTANCE, direction)
         val velocity = Vector3d()
@@ -93,6 +95,7 @@ class CannonBlock(properties: BlockBehaviour.Properties) : DispenserBlock(proper
         direction.mul(SHOT_SPEED).add(velocity)
 
         val ball = Cannonball(level, muzzle.x, muzzle.y, muzzle.z)
+        ball.setItem(ammo)
         ball.setDeltaMovement(direction.x, direction.y, direction.z)
         level.addFreshEntity(ball)
 

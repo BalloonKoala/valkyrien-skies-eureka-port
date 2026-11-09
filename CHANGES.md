@@ -23,7 +23,9 @@ This project is a modified version of **Valkyrien Skies 2.4.11** and **VS Eureka
 ## New features
 - Cushions work on ships, and a cushion in front of a helm is a driver's seat
 - Pause All button for every engine on a ship
-- Cannon block and cannonball, with a barrel that can be aimed in any direction
+- Cannon block, with a barrel that can be aimed in any direction
+- Small, medium and large cannonball items with their own recipes and explosion power settings; cannons only fire cannonballs
+- Crouching and right clicking a helm opens it whatever is in the player's hands
 - Cannons can be wired straight to a helm or cushion and fired with a key, no wireless button needed
 - Ship Info screen before assembling, with the block count and a 3D view of what would become the ship
 - Blocks players place are remembered per chunk, and only those can become a ship, through the helm or VS's assembler items

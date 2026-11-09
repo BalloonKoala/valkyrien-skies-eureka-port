@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "GIG",
+    "ISI",
+    "GIG"
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "G": "minecraft:gunpowder",
+    "S": "vs_eureka:small_cannonball"
+  },
+  "result": {
+    "count": 1,
+    "id": "vs_eureka:medium_cannonball"
+  }
+}
