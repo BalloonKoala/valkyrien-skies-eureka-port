@@ -14,6 +14,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.valkyrienskies.mod.client.render.ShipRenderProblems;
 import org.valkyrienskies.mod.mixinducks.client.render.ChunkSectionsToRenderDuck;
 
 /**
@@ -24,6 +25,7 @@ import org.valkyrienskies.mod.mixinducks.client.render.ChunkSectionsToRenderDuck
 public abstract class MixinChunkSectionsToRender implements ChunkSectionsToRenderDuck {
     @Unique
     private List<ChunkSectionsToRender> vs$shipRenders = List.of();
+
 
     @Shadow
     private void renderLayers(final ChunkSectionLayer[] layers, final GpuSampler sampler, final RenderPass renderPass,
@@ -42,8 +44,13 @@ public abstract class MixinChunkSectionsToRender implements ChunkSectionsToRende
         final GpuTextureView atlas, final GpuTextureView lightmap, final @Nullable RenderPipeline renderPipelineOverride,
         final @Nullable RenderPipeline renderPipelineOverrideMultidraw, final CallbackInfo ci) {
         for (final ChunkSectionsToRender ship : vs$shipRenders) {
-            ((MixinChunkSectionsToRender) (Object) ship).renderLayers(layers, sampler, renderPass, atlas, lightmap,
-                renderPipelineOverride, renderPipelineOverrideMultidraw);
+            try {
+                ((MixinChunkSectionsToRender) (Object) ship).renderLayers(layers, sampler, renderPass, atlas, lightmap,
+                    renderPipelineOverride, renderPipelineOverrideMultidraw);
+            } catch (final IllegalStateException e) {
+                // A ship that can't be drawn this frame is left out, the game keeps going
+                ShipRenderProblems.report("Couldn't draw a ship", e);
+            }
         }
     }
 }

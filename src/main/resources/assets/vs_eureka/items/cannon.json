@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "vs_eureka:block/cannon"
+    "model": "vs_eureka:item/cannon"
   }
 }

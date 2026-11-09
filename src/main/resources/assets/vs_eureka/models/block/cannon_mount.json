@@ -1,0 +1,242 @@
+{
+  "textures": {
+    "particle": "minecraft:block/dark_oak_planks",
+    "wood": "minecraft:block/stripped_dark_oak_log",
+    "wood_top": "minecraft:block/dark_oak_planks",
+    "wheel": "minecraft:block/dark_oak_log_top",
+    "wheel_edge": "minecraft:block/dark_oak_log"
+  },
+  "elements": [
+    {
+      "from": [
+        4,
+        1.5,
+        4
+      ],
+      "to": [
+        12,
+        3,
+        12
+      ],
+      "faces": {
+        "north": {
+          "texture": "#wood"
+        },
+        "south": {
+          "texture": "#wood"
+        },
+        "east": {
+          "texture": "#wood"
+        },
+        "west": {
+          "texture": "#wood"
+        },
+        "up": {
+          "texture": "#wood"
+        },
+        "down": {
+          "texture": "#wood"
+        }
+      },
+      "name": "bed"
+    },
+    {
+      "from": [
+        3,
+        1.5,
+        5
+      ],
+      "to": [
+        5,
+        11,
+        11
+      ],
+      "faces": {
+        "north": {
+          "texture": "#wood"
+        },
+        "south": {
+          "texture": "#wood"
+        },
+        "east": {
+          "texture": "#wood"
+        },
+        "west": {
+          "texture": "#wood"
+        },
+        "up": {
+          "texture": "#wood_top"
+        },
+        "down": {
+          "texture": "#wood"
+        }
+      },
+      "name": "cheek_west"
+    },
+    {
+      "from": [
+        11,
+        1.5,
+        5
+      ],
+      "to": [
+        13,
+        11,
+        11
+      ],
+      "faces": {
+        "north": {
+          "texture": "#wood"
+        },
+        "south": {
+          "texture": "#wood"
+        },
+        "east": {
+          "texture": "#wood"
+        },
+        "west": {
+          "texture": "#wood"
+        },
+        "up": {
+          "texture": "#wood_top"
+        },
+        "down": {
+          "texture": "#wood"
+        }
+      },
+      "name": "cheek_east"
+    },
+    {
+      "from": [
+        2,
+        1,
+        4.5
+      ],
+      "to": [
+        3,
+        4,
+        7.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#wheel_edge"
+        },
+        "south": {
+          "texture": "#wheel_edge"
+        },
+        "east": {
+          "texture": "#wheel"
+        },
+        "west": {
+          "texture": "#wheel"
+        },
+        "up": {
+          "texture": "#wheel_edge"
+        },
+        "down": {
+          "texture": "#wheel_edge"
+        }
+      },
+      "name": "wheel_nw"
+    },
+    {
+      "from": [
+        2,
+        1,
+        8.5
+      ],
+      "to": [
+        3,
+        4,
+        11.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#wheel_edge"
+        },
+        "south": {
+          "texture": "#wheel_edge"
+        },
+        "east": {
+          "texture": "#wheel"
+        },
+        "west": {
+          "texture": "#wheel"
+        },
+        "up": {
+          "texture": "#wheel_edge"
+        },
+        "down": {
+          "texture": "#wheel_edge"
+        }
+      },
+      "name": "wheel_sw"
+    },
+    {
+      "from": [
+        13,
+        1,
+        4.5
+      ],
+      "to": [
+        14,
+        4,
+        7.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#wheel_edge"
+        },
+        "south": {
+          "texture": "#wheel_edge"
+        },
+        "east": {
+          "texture": "#wheel"
+        },
+        "west": {
+          "texture": "#wheel"
+        },
+        "up": {
+          "texture": "#wheel_edge"
+        },
+        "down": {
+          "texture": "#wheel_edge"
+        }
+      },
+      "name": "wheel_ne"
+    },
+    {
+      "from": [
+        13,
+        1,
+        8.5
+      ],
+      "to": [
+        14,
+        4,
+        11.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#wheel_edge"
+        },
+        "south": {
+          "texture": "#wheel_edge"
+        },
+        "east": {
+          "texture": "#wheel"
+        },
+        "west": {
+          "texture": "#wheel"
+        },
+        "up": {
+          "texture": "#wheel_edge"
+        },
+        "down": {
+          "texture": "#wheel_edge"
+        }
+      },
+      "name": "wheel_se"
+    }
+  ]
+}

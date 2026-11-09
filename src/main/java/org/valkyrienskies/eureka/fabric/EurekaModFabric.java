@@ -30,6 +30,8 @@ import org.valkyrienskies.eureka.WelcomeMessage;
 import org.valkyrienskies.eureka.block.IWoodType;
 import org.valkyrienskies.eureka.block.WoodType;
 import org.valkyrienskies.eureka.blockentity.renderer.ShipHelmBlockEntityRenderer;
+import org.valkyrienskies.eureka.blockentity.renderer.CannonBlockEntityRenderer;
+import org.valkyrienskies.eureka.blockentity.renderer.CannonModels;
 import org.valkyrienskies.eureka.blockentity.renderer.WheelModels;
 import org.valkyrienskies.eureka.fabric.registry.FuelRegistryImpl;
 import org.valkyrienskies.eureka.registry.CreativeTabs;
@@ -64,7 +66,16 @@ public class EurekaModFabric implements ModInitializer {
                     ShipHelmBlockEntityRenderer::new
             );
 
+            BlockEntityRenderers.register(
+                    EurekaBlockEntities.INSTANCE.getCANNON().get(),
+                    CannonBlockEntityRenderer::new
+            );
+
             ModelLoadingPlugin.register(context -> {
+                context.addModel(CannonModels.INSTANCE.getMount(), SimpleUnbakedExtraModel.blockStateModel(
+                    Identifier.fromNamespaceAndPath(EurekaMod.MOD_ID, "block/cannon_mount")));
+                context.addModel(CannonModels.INSTANCE.getBarrel(), SimpleUnbakedExtraModel.blockStateModel(
+                    Identifier.fromNamespaceAndPath(EurekaMod.MOD_ID, "block/cannon_barrel")));
                 for (final IWoodType woodType : WoodType.getEntries()) {
                     context.addModel(
                         WheelModels.INSTANCE.getKeys().get(woodType),

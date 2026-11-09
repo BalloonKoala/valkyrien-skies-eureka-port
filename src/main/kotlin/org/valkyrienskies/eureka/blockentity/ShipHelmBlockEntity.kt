@@ -165,18 +165,16 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
         val blockState = level.getBlockState(blockPos)
         if (blockState.block !is ShipHelmBlock) return
 
-        val builtShip = ShipAssembler.collectBlocks(
-            level,
-            blockPos
-        ) {
-            return@collectBlocks !it.isAir && !it.`is`(ASSEMBLE_BLACKLIST)
-        }
+        val builtShip = ShipAssembler.collectBlocks(level, blockPos, ::canAssemble)
 
         if (builtShip == null) {
             player.sendOverlayMessage(Component.translatable("info.vs_eureka.too_big", EurekaConfig.SERVER.maxShipBlocks))
             logger.warn("Failed to assemble to large of a ship for ${player.name.string}")
         }
     }
+
+    /** Blocks that become part of the ship when they touch it. The assembly preview has to match this. */
+    fun canAssemble(state: BlockState): Boolean = !state.isAir && !state.`is`(ASSEMBLE_BLACKLIST)
 
     @OptIn(GameTickOnly::class)
     fun disassemble() {

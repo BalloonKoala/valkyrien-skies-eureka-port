@@ -31,20 +31,16 @@
       "y": 270
     },
     "facing=up,triggered=false": {
-      "model": "vs_eureka:block/cannon",
-      "x": 270
+      "model": "vs_eureka:block/cannon"
     },
     "facing=up,triggered=true": {
-      "model": "vs_eureka:block/cannon",
-      "x": 270
+      "model": "vs_eureka:block/cannon"
     },
     "facing=down,triggered=false": {
-      "model": "vs_eureka:block/cannon",
-      "x": 90
+      "model": "vs_eureka:block/cannon"
     },
     "facing=down,triggered=true": {
-      "model": "vs_eureka:block/cannon",
-      "x": 90
+      "model": "vs_eureka:block/cannon"
     }
   }
 }

@@ -103,6 +103,19 @@ public abstract class MixinServerGamePacketListenerImpl extends ServerCommonPack
         }
     }
 
+    /**
+     * The "moved wrongly" check, which 2.4.11 skips the same way through ServerPlayerGameMode.isCreative. The server
+     * works out where a move ends against its own copy of the ships, which is a tick or a ping off from the player's on a
+     * moving ship, so it kept pulling survival players back.
+     */
+    @WrapOperation(
+        method = "handlePlayerPositionChange",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerPlayer;isCreative()Z")
+    )
+    private boolean vs$skipMovedWrongly(final ServerPlayer instance, final Operation<Boolean> isCreative) {
+        return !VSGameConfig.SERVER.getEnableMovementChecks() || isCreative.call(instance);
+    }
+
     @WrapOperation(
         method = "handleMoveVehicle",
         at = @At(

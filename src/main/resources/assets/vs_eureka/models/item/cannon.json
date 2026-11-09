@@ -1,0 +1,562 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "particle": "minecraft:block/anvil",
+    "plate": "minecraft:block/smooth_stone",
+    "plate_side": "minecraft:block/smooth_stone_slab_side",
+    "ring": "minecraft:block/polished_blackstone",
+    "wood": "minecraft:block/stripped_dark_oak_log",
+    "wood_top": "minecraft:block/dark_oak_planks",
+    "wheel": "minecraft:block/dark_oak_log_top",
+    "wheel_edge": "minecraft:block/dark_oak_log",
+    "iron": "minecraft:block/anvil",
+    "band": "minecraft:block/polished_blackstone",
+    "bore": "vs_eureka:block/cannon_muzzle"
+  },
+  "elements": [
+    {
+      "from": [
+        1,
+        0,
+        1
+      ],
+      "to": [
+        15,
+        1,
+        15
+      ],
+      "faces": {
+        "north": {
+          "texture": "#plate_side"
+        },
+        "south": {
+          "texture": "#plate_side"
+        },
+        "east": {
+          "texture": "#plate_side"
+        },
+        "west": {
+          "texture": "#plate_side"
+        },
+        "up": {
+          "texture": "#plate"
+        },
+        "down": {
+          "texture": "#plate",
+          "cullface": "down"
+        }
+      },
+      "name": "plate"
+    },
+    {
+      "from": [
+        3,
+        1,
+        3
+      ],
+      "to": [
+        13,
+        1.5,
+        13
+      ],
+      "faces": {
+        "north": {
+          "texture": "#ring"
+        },
+        "south": {
+          "texture": "#ring"
+        },
+        "east": {
+          "texture": "#ring"
+        },
+        "west": {
+          "texture": "#ring"
+        },
+        "up": {
+          "texture": "#ring"
+        },
+        "down": {
+          "texture": "#ring"
+        }
+      },
+      "name": "ring"
+    },
+    {
+      "from": [
+        4,
+        1.5,
+        4
+      ],
+      "to": [
+        12,
+        3,
+        12
+      ],
+      "faces": {
+        "north": {
+          "texture": "#wood"
+        },
+        "south": {
+          "texture": "#wood"
+        },
+        "east": {
+          "texture": "#wood"
+        },
+        "west": {
+          "texture": "#wood"
+        },
+        "up": {
+          "texture": "#wood"
+        },
+        "down": {
+          "texture": "#wood"
+        }
+      },
+      "name": "bed"
+    },
+    {
+      "from": [
+        3,
+        1.5,
+        5
+      ],
+      "to": [
+        5,
+        7.5,
+        11
+      ],
+      "faces": {
+        "north": {
+          "texture": "#wood"
+        },
+        "south": {
+          "texture": "#wood"
+        },
+        "east": {
+          "texture": "#wood"
+        },
+        "west": {
+          "texture": "#wood"
+        },
+        "up": {
+          "texture": "#wood_top"
+        },
+        "down": {
+          "texture": "#wood"
+        }
+      },
+      "name": "cheek_west"
+    },
+    {
+      "from": [
+        11,
+        1.5,
+        5
+      ],
+      "to": [
+        13,
+        7.5,
+        11
+      ],
+      "faces": {
+        "north": {
+          "texture": "#wood"
+        },
+        "south": {
+          "texture": "#wood"
+        },
+        "east": {
+          "texture": "#wood"
+        },
+        "west": {
+          "texture": "#wood"
+        },
+        "up": {
+          "texture": "#wood_top"
+        },
+        "down": {
+          "texture": "#wood"
+        }
+      },
+      "name": "cheek_east"
+    },
+    {
+      "from": [
+        2,
+        1,
+        4.5
+      ],
+      "to": [
+        3,
+        4,
+        7.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#wheel_edge"
+        },
+        "south": {
+          "texture": "#wheel_edge"
+        },
+        "east": {
+          "texture": "#wheel"
+        },
+        "west": {
+          "texture": "#wheel"
+        },
+        "up": {
+          "texture": "#wheel_edge"
+        },
+        "down": {
+          "texture": "#wheel_edge"
+        }
+      },
+      "name": "wheel_nw"
+    },
+    {
+      "from": [
+        2,
+        1,
+        8.5
+      ],
+      "to": [
+        3,
+        4,
+        11.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#wheel_edge"
+        },
+        "south": {
+          "texture": "#wheel_edge"
+        },
+        "east": {
+          "texture": "#wheel"
+        },
+        "west": {
+          "texture": "#wheel"
+        },
+        "up": {
+          "texture": "#wheel_edge"
+        },
+        "down": {
+          "texture": "#wheel_edge"
+        }
+      },
+      "name": "wheel_sw"
+    },
+    {
+      "from": [
+        13,
+        1,
+        4.5
+      ],
+      "to": [
+        14,
+        4,
+        7.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#wheel_edge"
+        },
+        "south": {
+          "texture": "#wheel_edge"
+        },
+        "east": {
+          "texture": "#wheel"
+        },
+        "west": {
+          "texture": "#wheel"
+        },
+        "up": {
+          "texture": "#wheel_edge"
+        },
+        "down": {
+          "texture": "#wheel_edge"
+        }
+      },
+      "name": "wheel_ne"
+    },
+    {
+      "from": [
+        13,
+        1,
+        8.5
+      ],
+      "to": [
+        14,
+        4,
+        11.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#wheel_edge"
+        },
+        "south": {
+          "texture": "#wheel_edge"
+        },
+        "east": {
+          "texture": "#wheel"
+        },
+        "west": {
+          "texture": "#wheel"
+        },
+        "up": {
+          "texture": "#wheel_edge"
+        },
+        "down": {
+          "texture": "#wheel_edge"
+        }
+      },
+      "name": "wheel_se"
+    },
+    {
+      "from": [
+        5,
+        6,
+        2
+      ],
+      "to": [
+        11,
+        12,
+        4
+      ],
+      "faces": {
+        "north": {
+          "texture": "#bore"
+        },
+        "south": {
+          "texture": "#band"
+        },
+        "east": {
+          "texture": "#band"
+        },
+        "west": {
+          "texture": "#band"
+        },
+        "up": {
+          "texture": "#band"
+        },
+        "down": {
+          "texture": "#band"
+        }
+      },
+      "name": "muzzle",
+      "rotation": {
+        "origin": [
+          8,
+          9,
+          8
+        ],
+        "axis": "x",
+        "angle": 22.5
+      }
+    },
+    {
+      "from": [
+        5.5,
+        6.5,
+        4
+      ],
+      "to": [
+        10.5,
+        11.5,
+        10
+      ],
+      "faces": {
+        "north": {
+          "texture": "#iron"
+        },
+        "south": {
+          "texture": "#iron"
+        },
+        "east": {
+          "texture": "#iron"
+        },
+        "west": {
+          "texture": "#iron"
+        },
+        "up": {
+          "texture": "#iron"
+        },
+        "down": {
+          "texture": "#iron"
+        }
+      },
+      "name": "chase",
+      "rotation": {
+        "origin": [
+          8,
+          9,
+          8
+        ],
+        "axis": "x",
+        "angle": 22.5
+      }
+    },
+    {
+      "from": [
+        5,
+        6,
+        10
+      ],
+      "to": [
+        11,
+        12,
+        13
+      ],
+      "faces": {
+        "north": {
+          "texture": "#band"
+        },
+        "south": {
+          "texture": "#band"
+        },
+        "east": {
+          "texture": "#band"
+        },
+        "west": {
+          "texture": "#band"
+        },
+        "up": {
+          "texture": "#band"
+        },
+        "down": {
+          "texture": "#band"
+        }
+      },
+      "name": "breech",
+      "rotation": {
+        "origin": [
+          8,
+          9,
+          8
+        ],
+        "axis": "x",
+        "angle": 22.5
+      }
+    },
+    {
+      "from": [
+        7,
+        8,
+        13
+      ],
+      "to": [
+        9,
+        10,
+        14.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#band"
+        },
+        "south": {
+          "texture": "#band"
+        },
+        "east": {
+          "texture": "#band"
+        },
+        "west": {
+          "texture": "#band"
+        },
+        "up": {
+          "texture": "#band"
+        },
+        "down": {
+          "texture": "#band"
+        }
+      },
+      "name": "knob",
+      "rotation": {
+        "origin": [
+          8,
+          9,
+          8
+        ],
+        "axis": "x",
+        "angle": 22.5
+      }
+    },
+    {
+      "from": [
+        4,
+        8,
+        7
+      ],
+      "to": [
+        12,
+        10,
+        9
+      ],
+      "faces": {
+        "north": {
+          "texture": "#band"
+        },
+        "south": {
+          "texture": "#band"
+        },
+        "east": {
+          "texture": "#band"
+        },
+        "west": {
+          "texture": "#band"
+        },
+        "up": {
+          "texture": "#band"
+        },
+        "down": {
+          "texture": "#band"
+        }
+      },
+      "name": "trunnions",
+      "rotation": {
+        "origin": [
+          8,
+          9,
+          8
+        ],
+        "axis": "x",
+        "angle": 22.5
+      }
+    }
+  ],
+  "display": {
+    "gui": {
+      "rotation": [
+        30,
+        315,
+        0
+      ],
+      "translation": [
+        0,
+        0.5,
+        0
+      ],
+      "scale": [
+        0.8,
+        0.8,
+        0.8
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.7,
+        0.7,
+        0.7
+      ]
+    }
+  }
+}

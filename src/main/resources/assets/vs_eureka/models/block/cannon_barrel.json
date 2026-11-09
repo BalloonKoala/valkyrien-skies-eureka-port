@@ -1,0 +1,175 @@
+{
+  "textures": {
+    "particle": "minecraft:block/anvil",
+    "iron": "minecraft:block/anvil",
+    "band": "minecraft:block/polished_blackstone",
+    "bore": "vs_eureka:block/cannon_muzzle"
+  },
+  "elements": [
+    {
+      "from": [
+        5,
+        6,
+        2
+      ],
+      "to": [
+        11,
+        12,
+        4
+      ],
+      "faces": {
+        "north": {
+          "texture": "#bore"
+        },
+        "south": {
+          "texture": "#band"
+        },
+        "east": {
+          "texture": "#band"
+        },
+        "west": {
+          "texture": "#band"
+        },
+        "up": {
+          "texture": "#band"
+        },
+        "down": {
+          "texture": "#band"
+        }
+      },
+      "name": "muzzle"
+    },
+    {
+      "from": [
+        5.5,
+        6.5,
+        4
+      ],
+      "to": [
+        10.5,
+        11.5,
+        10
+      ],
+      "faces": {
+        "north": {
+          "texture": "#iron"
+        },
+        "south": {
+          "texture": "#iron"
+        },
+        "east": {
+          "texture": "#iron"
+        },
+        "west": {
+          "texture": "#iron"
+        },
+        "up": {
+          "texture": "#iron"
+        },
+        "down": {
+          "texture": "#iron"
+        }
+      },
+      "name": "chase"
+    },
+    {
+      "from": [
+        5,
+        6,
+        10
+      ],
+      "to": [
+        11,
+        12,
+        13
+      ],
+      "faces": {
+        "north": {
+          "texture": "#band"
+        },
+        "south": {
+          "texture": "#band"
+        },
+        "east": {
+          "texture": "#band"
+        },
+        "west": {
+          "texture": "#band"
+        },
+        "up": {
+          "texture": "#band"
+        },
+        "down": {
+          "texture": "#band"
+        }
+      },
+      "name": "breech"
+    },
+    {
+      "from": [
+        7,
+        8,
+        13
+      ],
+      "to": [
+        9,
+        10,
+        14.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#band"
+        },
+        "south": {
+          "texture": "#band"
+        },
+        "east": {
+          "texture": "#band"
+        },
+        "west": {
+          "texture": "#band"
+        },
+        "up": {
+          "texture": "#band"
+        },
+        "down": {
+          "texture": "#band"
+        }
+      },
+      "name": "knob"
+    },
+    {
+      "from": [
+        4,
+        8,
+        7
+      ],
+      "to": [
+        12,
+        10,
+        9
+      ],
+      "faces": {
+        "north": {
+          "texture": "#band"
+        },
+        "south": {
+          "texture": "#band"
+        },
+        "east": {
+          "texture": "#band"
+        },
+        "west": {
+          "texture": "#band"
+        },
+        "up": {
+          "texture": "#band"
+        },
+        "down": {
+          "texture": "#band"
+        }
+      },
+      "name": "trunnions"
+    }
+  ]
+}

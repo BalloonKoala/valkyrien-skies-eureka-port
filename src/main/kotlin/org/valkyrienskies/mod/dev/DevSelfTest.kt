@@ -182,10 +182,13 @@ object DevSelfTest {
                 return
             }
         }
-        if ((System.getenv("VS_TEST_STANCE") != null || System.getenv("VS_TEST_DECK") != null) && t > 110) return
+        if ((System.getenv("VS_TEST_STANCE") != null || System.getenv("VS_TEST_DECK") != null || System.getenv("VS_TEST_FEATURES") != null) && t > 110) return
         when (t) {
             40 -> {
-                EurekaConfig.SERVER.maxSpeedFromEngines = (System.getenv("VS_TEST_SPEED") ?: "12").toDouble()
+                val testSpeed = (System.getenv("VS_TEST_SPEED") ?: "12").toDouble()
+                EurekaConfig.SERVER.smallShipTopSpeed = testSpeed
+                EurekaConfig.SERVER.hugeShipTopSpeed = testSpeed
+                EurekaConfig.SERVER.engineSpeedPerEngine = 10000.0
                 EurekaConfig.SERVER.enginePowerLinear = 50000000f
                 for (x in -6..6) for (z in -6..6) {
                     level.setBlock(BlockPos(x, y, z), Blocks.OAK_PLANKS.defaultBlockState(), 3)

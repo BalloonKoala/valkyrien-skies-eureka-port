@@ -900,6 +900,157 @@ class DevClientTest : FabricClientGameTest {
     @Volatile
     private var playerDrawnSitting: Boolean? = null
 
+    companion object {
+        fun shotOf(context: ClientGameTestContext, name: String) {
+            if (System.getenv("VS_TEST_SODIUM") == null) {
+                context.takeScreenshot(name)
+                return
+            }
+            context.runOnClient<RuntimeException> { mc ->
+                net.minecraft.client.Screenshot.grab(mc.gameDirectory, "$name.png", mc.gameRenderer.mainRenderTarget(), 1) { }
+            }
+            context.waitTicks(5)
+        }
+    }
+
+    // Two cannons and no wireless buttons: wire them up in the wiring screen and fire them from their seats
+    private fun cannonWiringCheck(context: ClientGameTestContext, server: net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext) {
+        val g = InputConstants.getKey("key.keyboard.g")
+        lateinit var cannonA: BlockPos
+        lateinit var cannonB: BlockPos
+        lateinit var cushion: BlockPos
+        fun state(tag: String) = server.runOnServer<RuntimeException> { s ->
+            val level = s.overworld()
+            fun describe(pos: BlockPos): String {
+                val cannon = level.getBlockEntity(pos) as org.valkyrienskies.eureka.blockentity.CannonBlockEntity
+                val contact = when (cannon.contact) { null -> "helm"; cushion -> "cushion"; else -> "${cannon.contact}" }
+                return "tnt=${cannon.getItem(0).count} key=${cannon.key} contact=$contact"
+            }
+            log("cannonwire $tag A(${describe(cannonA)}) B(${describe(cannonB)})")
+        }
+
+        server.runOnServer<RuntimeException> { s ->
+            val level = s.overworld()
+            val seat = DevSelfTest.seatPos(level)
+            cannonA = seat.offset(-4, 0, -2)
+            cannonB = seat.offset(4, 0, -2)
+            cushion = seat.offset(-1, 0, -4)
+            val block = BuiltInRegistries.BLOCK.getValue(Identifier.parse("vs_eureka:cannon"))
+            level.setBlock(cannonA, block.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.WEST), 3)
+            level.setBlock(cannonB, block.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST), 3)
+            for (pos in listOf(cannonA, cannonB)) (level.getBlockEntity(pos) as org.valkyrienskies.eureka.blockentity.CannonBlockEntity).setItem(0, ItemStack(Items.TNT, 8))
+            log("cannonwire cushion ${DevSelfTest.placeCushion(level, cushion).javaClass.simpleName}")
+            val p = s.playerList.players[0]
+            p.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY)
+            DevSelfTest.standNearSeat(level, 2)
+        }
+        context.waitTicks(20)
+        state("placed")
+
+        server.runOnServer<RuntimeException> { s -> log("cannonwire helm menu ${s.playerList.players[0].openMenu(DevSelfTest.helm(s.overworld())!!)}") }
+        context.waitTicks(10)
+        context.clickScreenButton("gui.vs_eureka.wiring")
+        context.waitTicks(20)
+        context.runOnClient<RuntimeException> { mc ->
+            val screen = wiringScreen(mc)
+            log("cannonwire screen open=${screen != null} cannons=${screen?.buttons()?.count { it.isCannon }} buttons=${screen?.buttons()?.count { !it.isCannon }} contacts=${screen?.contacts()?.size}")
+        }
+        // From straight above, so the dots don't sit on top of each other
+        context.runOnClient<RuntimeException> {
+            WiringCamera.position.set(cannonA.x / 2.0 + cannonB.x / 2.0 + 0.5, cannonA.y + 14.0, cannonA.z + 0.5)
+            WiringCamera.yaw = 0f
+            WiringCamera.pitch = 89f
+        }
+        context.waitTicks(5)
+        shot(context, "cannonwire_screen")
+
+        // Click each orange dot and press G
+        for (cannon in listOf(cannonA, cannonB)) {
+            val dot = screenPixel(context, cannon)
+            context.input.setCursorPos(dot[0], dot[1])
+            context.waitTicks(3)
+            context.input.pressMouse(InputConstants.MOUSE_BUTTON_LEFT)
+            context.waitTicks(5)
+            context.input.pressKey(g)
+            context.waitTicks(6)
+        }
+        // Drag cannon B onto the cushion
+        val from = screenPixel(context, cannonB)
+        val to = screenPixel(context, cushion)
+        context.input.setCursorPos(from[0], from[1])
+        context.waitTicks(3)
+        context.input.holdMouse(InputConstants.MOUSE_BUTTON_LEFT)
+        context.waitTicks(3)
+        context.input.setCursorPos((from[0] + to[0]) / 2, (from[1] + to[1]) / 2)
+        context.waitTicks(3)
+        context.input.setCursorPos(to[0], to[1])
+        context.waitTicks(3)
+        context.input.releaseMouse(InputConstants.MOUSE_BUTTON_LEFT)
+        context.waitTicks(8)
+        shot(context, "cannonwire_wired")
+        state("wired")
+        context.input.pressKey(InputConstants.getKey("key.keyboard.escape"))
+        context.waitTicks(10)
+
+        context.input.pressKey(g)
+        context.waitTicks(15)
+        state("G while standing")
+
+        server.runOnServer<RuntimeException> { s -> log("cannonwire sat at helm ${DevSelfTest.helm(s.overworld())!!.sit(s.playerList.players[0], true)}") }
+        context.waitTicks(10)
+        context.input.pressKey(g)
+        context.waitTicks(15)
+        state("G at the helm")
+        context.input.holdKey { it.keyShift }
+        context.waitTicks(10)
+        context.input.releaseKey { it.keyShift }
+        context.waitTicks(10)
+
+        server.runOnServer<RuntimeException> { s ->
+            val level = s.overworld()
+            val ship = level.shipObjectWorld.loadedShips.getById(DevSelfTest.lifted!!.id)!!
+            val world = ship.shipToWorld.transformPosition(Vector3d(cushion.x + 0.5, cushion.y + 0.05, cushion.z + 2.5))
+            val p = s.playerList.players[0]
+            p.teleportTo(world.x, world.y, world.z)
+        }
+        context.waitTicks(15)
+        aimAtShipPoint(context, Vector3d(cushion.x + 0.5, cushion.y + 0.12, cushion.z + 0.5))
+        context.input.pressKey { it.keyUse }
+        context.waitTicks(10)
+        server.runOnServer<RuntimeException> { s -> log("cannonwire on cushion vehicle=${s.playerList.players[0].vehicle?.type}") }
+        context.input.pressKey(g)
+        context.waitTicks(15)
+        state("G on the cushion")
+        // Mashing the key fires no faster than one shot every few ticks, like redstone pulses
+        for (i in 1..5) { context.input.pressKey(g) }
+        context.waitTicks(15)
+        state("G five times quickly on the cushion")
+    }
+
+    // Aiming cannons and taking off with an elytra on the open deck, see DevFeatureTest
+    private fun featureTest(context: ClientGameTestContext) {
+        context.worldBuilder().setUseConsistentSettings(false).create().use { world ->
+            val server = world.server
+            server.runCommand("gamerule doDaylightCycle false")
+            server.runCommand("time set noon")
+            server.runCommand("weather clear")
+            world.connection.waitForChunksRender()
+            context.runOnClient<RuntimeException> { mc ->
+                log("terrain multi draw indirect=${mc.levelRenderer.isChunkRenderingUsingMultiDrawIndirect} backend=${com.mojang.blaze3d.systems.RenderSystem.getDevice().javaClass.simpleName}")
+            }
+            server.runOnServer<RuntimeException> { DevSelfTest.startMotion() }
+            context.waitTicks(125)
+            if (System.getenv("VS_TEST_CANNON_WIRE") != null) {
+                server.runCommand("gamerule tntExplodes false")
+                cannonWiringCheck(context, server)
+                return@use
+            }
+            if (System.getenv("VS_TEST_NO_CANNON") == null) DevFeatureTest.cannonTest(context, server) { aimAtShipPoint(context, it) }
+            if (System.getenv("VS_TEST_NO_ELYTRA") == null) DevFeatureTest.elytraTest(context, server)
+        }
+        log("feature test finished")
+    }
+
     override fun runTest(context: ClientGameTestContext) {
         LevelExtractionEvents.END_EXTRACTION.register(LevelExtractionEvents.EndExtraction { ctx ->
             for (state in ctx.levelState().entityRenderStates) {
@@ -910,6 +1061,18 @@ class DevClientTest : FabricClientGameTest {
         })
         if (System.getenv("VS_TEST_RECIPES") != null) {
             recipeShots(context)
+            return
+        }
+        if (System.getenv("VS_TEST_FEATURES") != null) {
+            featureTest(context)
+            return
+        }
+        if (System.getenv("VS_TEST_ASSEMBLY") != null) {
+            DevFeatureTest.assemblyTest(context)
+            return
+        }
+        if (System.getenv("VS_TEST_SPEEDS") != null) {
+            DevFeatureTest.speedTest(context)
             return
         }
         if (System.getenv("VS_TEST_DECK") != null) {

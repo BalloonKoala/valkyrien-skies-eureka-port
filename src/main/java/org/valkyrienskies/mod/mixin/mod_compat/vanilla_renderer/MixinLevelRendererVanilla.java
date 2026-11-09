@@ -39,6 +39,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.valkyrienskies.core.api.ships.ClientShip;
+import org.valkyrienskies.mod.client.render.ShipRenderProblems;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
 import org.valkyrienskies.mod.common.config.ShipRenderer;
 import org.valkyrienskies.mod.common.config.ShipRendererKt;
@@ -56,9 +57,6 @@ public abstract class MixinLevelRendererVanilla implements LevelRendererDuck, Le
 
     @Shadow
     private @Nullable ViewArea viewArea;
-
-    @Shadow
-    public abstract ChunkSectionsToRender prepareChunkRenders(Matrix4fc modelViewMatrix, boolean respectTranslucentOrder);
 
     @Shadow
     @Final
@@ -177,29 +175,51 @@ public abstract class MixinLevelRendererVanilla implements LevelRendererDuck, Le
         if (vs$drawingShip != null || vs$shipSectionCount == 0) {
             return original.call(modelView, respectTranslucentOrder);
         }
+        // Ship sections should sit at the front of the list. If they somehow don't, draw the world without ships
+        // this frame instead of crashing.
+        if (vs$shipSectionCount > visibleSections.size()) {
+            vs$shipSectionCount = 0;
+            vs$shipSections.clear();
+            return original.call(modelView, respectTranslucentOrder);
+        }
 
         final ObjectArrayList<SectionRenderDispatcher.RenderSection> allSections = new ObjectArrayList<>(visibleSections);
         final Map<ClientShip, List<SectionRenderDispatcher.RenderSection>> sectionsByShip = new LinkedHashMap<>();
         for (int i = 0; i < vs$shipSectionCount; i++) {
             final SectionRenderDispatcher.RenderSection section = allSections.get(i);
-            sectionsByShip.computeIfAbsent(vs$shipSections.get(section), ship -> new ArrayList<>()).add(section);
+            final ClientShip ship = vs$shipSections.get(section);
+            if (ship != null) sectionsByShip.computeIfAbsent(ship, s -> new ArrayList<>()).add(section);
         }
 
         visibleSections.removeElements(0, vs$shipSectionCount);
-        final ChunkSectionsToRender world = original.call(modelView, respectTranslucentOrder);
+        final ChunkSectionsToRender world;
+        try {
+            world = original.call(modelView, respectTranslucentOrder);
+        } finally {
+            // Put the list back the way it was, even if something went wrong
+            visibleSections.clear();
+            visibleSections.addAll(allSections);
+        }
 
         final List<ChunkSectionsToRender> ships = new ArrayList<>();
-        sectionsByShip.forEach((ship, sections) -> {
+        try {
+            sectionsByShip.forEach((ship, sections) -> {
+                visibleSections.clear();
+                visibleSections.addAll(sections);
+                vs$drawingShip = ship;
+                // Ships go through the same path as the world. The section data of multi draw and of separate draws
+                // share one storage, and writing the other kind closes it, along with the world's section data.
+                ships.add(original.call(vs$beginShip(ship, modelView), respectTranslucentOrder));
+            });
+        } catch (final RuntimeException e) {
+            // Leave the ships out of this frame rather than take the whole game down
+            ShipRenderProblems.report("Couldn't prepare ship terrain", e);
+            ships.clear();
+        } finally {
+            vs$drawingShip = null;
             visibleSections.clear();
-            visibleSections.addAll(sections);
-            vs$drawingShip = ship;
-            // Multi draw only takes one batch of section data per frame, ships use the separate draws
-            ships.add(prepareChunkRenders(vs$beginShip(ship, modelView), respectTranslucentOrder));
-        });
-        vs$drawingShip = null;
-
-        visibleSections.clear();
-        visibleSections.addAll(allSections);
+            visibleSections.addAll(allSections);
+        }
         ((ChunkSectionsToRenderDuck) world).vs$setShipRenders(ships);
         return world;
     }

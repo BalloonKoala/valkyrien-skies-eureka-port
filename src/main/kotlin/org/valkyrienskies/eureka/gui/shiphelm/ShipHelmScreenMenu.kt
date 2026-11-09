@@ -7,6 +7,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.item.ItemStack
 import org.valkyrienskies.eureka.EurekaConfig
 import org.valkyrienskies.eureka.EurekaScreens
+import org.valkyrienskies.eureka.assembly.AssemblyPreview
 import org.valkyrienskies.eureka.blockentity.ShipHelmBlockEntity
 import org.valkyrienskies.eureka.wiring.ShipWiring
 
@@ -24,8 +25,9 @@ class ShipHelmScreenMenu(syncId: Int, playerInv: Inventory, private val blockEnt
     override fun clickMenuButton(player: Player, id: Int): Boolean {
         if (blockEntity == null) return false
 
-        if (id == 0 && !assembled && !player.level().isClientSide) {
-            blockEntity.assemble(player)
+        // Shows what would become the ship first, the Assemble button under that preview assembles it
+        if (id == 0 && !assembled && player is ServerPlayer) {
+            AssemblyPreview.sendTo(player, blockEntity)
             return true
         }
 

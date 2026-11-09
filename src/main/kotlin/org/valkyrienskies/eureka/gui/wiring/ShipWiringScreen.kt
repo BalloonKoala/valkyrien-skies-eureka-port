@@ -25,7 +25,7 @@ import kotlin.math.max
 import kotlin.math.sqrt
 
 /**
- * Lets the player fly a camera around their ship and wire up its wireless buttons. The markers are drawn over the
+ * Lets the player fly a camera around their ship and wire up its wireless buttons and cannons. The markers are drawn over the
  * picture, so they show through the ship.
  */
 class ShipWiringScreen(private var data: WiringDataPayload) : Screen(Component.translatable("gui.vs_eureka.wiring")) {
@@ -150,10 +150,16 @@ class ShipWiringScreen(private var data: WiringDataPayload) : Screen(Component.t
         }
         for (button in data.buttons) {
             val at = project(button.pos) ?: continue
-            val color = if (button.pos == binding?.pos) BINDING_COLOR else BUTTON_COLOR
+            val color = when {
+                button.pos == binding?.pos -> BINDING_COLOR
+                button.isCannon -> CANNON_COLOR
+                else -> BUTTON_COLOR
+            }
             dot(graphics, at[0], at[1], BUTTON_RADIUS + 1, OUTLINE_COLOR)
             dot(graphics, at[0], at[1], BUTTON_RADIUS, color)
-            graphics.centeredText(font, keyName(button.key), at[0], at[1] - BUTTON_RADIUS - 11, BUTTON_TEXT_COLOR)
+            graphics.centeredText(font, keyName(button.key), at[0], at[1] - BUTTON_RADIUS - 11,
+                if (button.isCannon) CANNON_TEXT_COLOR else BUTTON_TEXT_COLOR)
+            if (button.isCannon) graphics.centeredText(font, CANNON_TEXT, at[0], at[1] + BUTTON_RADIUS + 3, CANNON_TEXT_COLOR)
         }
 
         graphics.centeredText(font, title, width / 2, 6, TITLE_COLOR)
@@ -267,6 +273,8 @@ class ShipWiringScreen(private var data: WiringDataPayload) : Screen(Component.t
         const val CONTACT_RADIUS = 4
 
         const val BUTTON_COLOR = 0xFFFF2020.toInt()
+        const val CANNON_COLOR = 0xFFFF9A1F.toInt()
+        const val CANNON_TEXT_COLOR = 0xFFFFD8A0.toInt()
         const val BINDING_COLOR = 0xFFFFD020.toInt()
         const val CONTACT_COLOR = 0xFF2F7BFF.toInt()
         const val OUTLINE_COLOR = 0xFF101018.toInt()
@@ -285,5 +293,6 @@ class ShipWiringScreen(private var data: WiringDataPayload) : Screen(Component.t
         val NO_KEY_TEXT: Component = Component.translatable("gui.vs_eureka.wiring.no_key")
         val HELM_TEXT: Component = Component.translatable("gui.vs_eureka.wiring.helm")
         val CUSHION_TEXT: Component = Component.translatable("gui.vs_eureka.wiring.cushion")
+        val CANNON_TEXT: Component = Component.translatable("gui.vs_eureka.wiring.cannon")
     }
 }

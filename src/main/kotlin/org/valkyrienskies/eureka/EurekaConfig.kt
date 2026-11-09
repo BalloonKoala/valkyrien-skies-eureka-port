@@ -71,17 +71,29 @@ object EurekaConfig {
         @ConfigEntry(description = "Fuel burn time multiplier")
         var engineFuelMultiplier = 2f
 
-        @ConfigEntry(description = "Extra engine power for when having multiple engines per engine")
-        var engineBoost = 0.2
+        @ConfigEntry(description = "Speed in blocks per second that one fully heated engine adds to a ship that weighs engineReferenceMass, running engines sit at about 80% heat. More engines add more, until the ship nears its top speed")
+        var engineSpeedPerEngine = 40.0
 
-        @ConfigEntry(description = "At what amount of engines the boost will start taking effect")
-        var engineBoostOffset = 2.5
+        @ConfigEntry(description = "Mass in kg of the ship engineSpeedPerEngine is measured on, about a 25 block ship")
+        var engineReferenceMass = 12000.0
 
-        @ConfigEntry(description = "The final linear boost will be raised to the power of 2, and the result of the delta is multiple by this value")
-        var engineBoostExponentialPower = 0.000001
+        @ConfigEntry(description = "How much a heavier ship slows down each engine. Each engine adds (engineReferenceMass / mass) ^ this. 1 = in proportion to mass, 0 = mass doesn't matter")
+        var engineMassExponent = 0.6
 
-        @ConfigEntry(description = "Max speed of a ship with engines (actual max speed varies with engines and mass.)")
-        var maxSpeedFromEngines = 12.0
+        @ConfigEntry(description = "Top speed in blocks per second of a small ship, one no longer than smallShipLength")
+        var smallShipTopSpeed = 100.0
+
+        @ConfigEntry(description = "Longest side in blocks of a small ship")
+        var smallShipLength = 8.0
+
+        @ConfigEntry(description = "Top speed in blocks per second of a huge ship, one at least hugeShipLength long. Ships in between get a top speed in between")
+        var hugeShipTopSpeed = 20.0
+
+        @ConfigEntry(description = "Longest side in blocks of a huge ship")
+        var hugeShipLength = 500.0
+
+        @ConfigEntry(description = "Ships get less steady as they speed up to this many blocks per second, and hold themselves level harder past it, so fast ships don't tip over")
+        var stableSpeed = 15.0
 
         @ConfigEntry(description = "Max reverse speed of a ship with engines")
         var maxReverseSpeedFromEngines = 5.0

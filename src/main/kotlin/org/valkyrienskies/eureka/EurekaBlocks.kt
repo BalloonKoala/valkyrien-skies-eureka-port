@@ -36,6 +36,8 @@ object EurekaBlocks {
             // Not a conductor, or the pulse of one cannon's button would carry over to the cannon next to it
             eurekaBlockProperties("cannon").mapColor(MapColor.STONE).strength(3.5F).requiresCorrectToolForDrops()
                 .sound(SoundType.STONE).isRedstoneConductor { _, _, _ -> false }
+                // The model doesn't fill the block, blocks around it have to keep their faces
+                .noOcclusion()
         )
     }
     val ENGINE = BLOCKS.register("engine", ::EngineBlock)

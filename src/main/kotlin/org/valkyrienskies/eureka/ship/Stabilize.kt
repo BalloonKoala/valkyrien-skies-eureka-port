@@ -6,6 +6,8 @@ import org.valkyrienskies.core.api.ships.PhysShip
 import org.valkyrienskies.eureka.EurekaConfig
 import kotlin.math.atan
 import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.pow
 
 fun stabilize(
     ship: PhysShip,
@@ -48,7 +50,13 @@ fun stabilize(
 
     val speed = ship.velocity.length()
 
-    stabilizationTorque.mul(EurekaConfig.SERVER.stabilizationTorqueConstant / max(1.0, speed * speed * EurekaConfig.SERVER.scaledInstability / ship.mass + speed * EurekaConfig.SERVER.unscaledInstability))
+    // Ships get less steady as they speed up to stableSpeed, the speeds Eureka was made for. Past that the air pushes
+    // much harder on them, so they hold themselves level harder instead of tipping over.
+    val steadySpeed = EurekaConfig.SERVER.stableSpeed
+    val wobble = min(speed, steadySpeed)
+    var strength = EurekaConfig.SERVER.stabilizationTorqueConstant / max(1.0, wobble * wobble * EurekaConfig.SERVER.scaledInstability / ship.mass + wobble * EurekaConfig.SERVER.unscaledInstability)
+    if (steadySpeed > 0.0 && speed > steadySpeed) strength *= min((speed / steadySpeed).pow(2), MAX_HIGH_SPEED_HOLD)
+    stabilizationTorque.mul(strength)
     forces.applyInvariantTorque(stabilizationTorque)
 
     if (linear) {
@@ -65,6 +73,9 @@ fun stabilize(
         forces.applyInvariantForce(idealVelocity)
     }
 }
+
+// Holding level any harder makes the physics overshoot
+private const val MAX_HIGH_SPEED_HOLD = 6.0
 
 private fun smoothingATan(smoothing: Double, x: Double): Double = atan(x * smoothing) / smoothing
 private fun smoothingATanMax(max: Double, x: Double): Double = smoothingATan(1 / (max * 0.638), x)

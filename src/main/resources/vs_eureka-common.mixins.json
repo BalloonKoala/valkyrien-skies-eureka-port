@@ -8,6 +8,7 @@
   ],
   "client": [
     "client.CameraWiringMixin",
+    "client.GuiGraphicsExtractorAccessor",
     "client.HumanoidModelMixin",
     "client.HumanoidRenderStateMixin",
     "client.KeyMappingMixin",

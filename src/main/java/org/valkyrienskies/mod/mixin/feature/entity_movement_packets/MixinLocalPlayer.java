@@ -55,7 +55,9 @@ public abstract class MixinLocalPlayer extends Entity implements IEntityDragging
                 }
             }
             if (realArg instanceof ServerboundMovePlayerPacket movePacket) {
-                final boolean isOnGround = movePacket.isOnGround() || getDraggingInformation().isEntityBeingDraggedByAShip();
+                // Not while gliding, the server ends a glide as soon as it hears the player is on the ground
+                final boolean isOnGround = movePacket.isOnGround() ||
+                    (getDraggingInformation().isEntityBeingDraggedByAShip() && !((LocalPlayer) (Object) this).isFallFlying());
                 if (movePacket.hasPosition() && movePacket.hasRotation()) {
                     //posrot
                     realArg = new ServerboundMovePlayerPacket.PosRot(movePacket.getX(0.0), movePacket.getY(0.0), movePacket.getZ(0.0), movePacket.getYRot(0.0f), movePacket.getXRot(0.0f), isOnGround, movePacket.horizontalCollision());
@@ -74,7 +76,23 @@ public abstract class MixinLocalPlayer extends Entity implements IEntityDragging
         original.call(instance, realArg);
     }
 
-    @WrapOperation(method = "sendChanges", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/ClientPacketListener;send(Lnet/minecraft/network/protocol/Packet;)V"))
+    /**
+     * Taking off with an elytra from a ship. For a while after a jump on a ship, move packets tell the server the player
+     * is on the ground, so ship motion can't build up fall damage, and the server turns gliding down while it believes
+     * that. So the server hears that the player is in the air before it hears about the glide. The ship keeps carrying
+     * the player like after any jump, and hands its speed over once they're clear of it.
+     */
+    @WrapOperation(method = "aiStep", at = @At(value = "INVOKE",
+        target = "Lnet/minecraft/client/player/LocalPlayer;tryToStartFallFlying()Z"))
+    private boolean vs$takeOffFromShip(final LocalPlayer player, final Operation<Boolean> original) {
+        final boolean started = original.call(player);
+        if (started && getDraggingInformation().isEntityBeingDraggedByAShip()) {
+            player.connection.send(new ServerboundMovePlayerPacket.StatusOnly(false, player.horizontalCollision));
+        }
+        return started;
+    }
+
+    @WrapOperation(method = "sendChanges",at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/ClientPacketListener;send(Lnet/minecraft/network/protocol/Packet;)V"))
     private void wrapSendVehiclePosition(ClientPacketListener instance, Packet<?> arg, Operation<Void> original) {
         if (arg instanceof ServerboundMoveVehiclePacket vehiclePacket && getRootVehicle() instanceof IEntityDraggingInformationProvider dragProvider) {
             if (dragProvider.getDraggingInformation().isEntityBeingDraggedByAShip()) {

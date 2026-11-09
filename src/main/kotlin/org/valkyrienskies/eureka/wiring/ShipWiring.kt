@@ -11,15 +11,14 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.phys.AABB
 import org.joml.Vector3d
 import org.valkyrienskies.core.api.ships.LoadedServerShip
-import org.valkyrienskies.eureka.block.WirelessButtonBlock
 import org.valkyrienskies.eureka.blockentity.ShipHelmBlockEntity
-import org.valkyrienskies.eureka.blockentity.WirelessButtonBlockEntity
 import org.valkyrienskies.mod.common.entity.ShipMountingEntity
 import org.valkyrienskies.mod.common.getLoadedShipManagingPos
 
 /**
- * The server side of wireless buttons. Buttons go to the helm until they get wired to another contact point, which is
- * a helm or a cushion on the same ship. Pressing a button's key while sitting on its contact point pulses it.
+ * The server side of wireless buttons and wired cannons. They go to the helm until they get wired to another contact
+ * point, which is a helm or a cushion on the same ship. Pressing the key while sitting on the contact point pulses the
+ * button or fires the cannon.
  */
 object ShipWiring {
     // Far enough for any spot in front of a helm, an edit from further away isn't from the helm screen
@@ -67,16 +66,22 @@ object ShipWiring {
         blockEntitiesOn(level, ship).filterIsInstance<ShipHelmBlockEntity>().map { WiringContact(it.blockPos, true) } +
             cushionsOn(level, ship).map { WiringContact(it.blockPosition(), false) }
 
-    /** The contact point of this button that really exists, null means the helm. */
-    private fun liveContact(button: WirelessButtonBlockEntity, contacts: List<WiringContact>): BlockPos? =
+    /** Everything on the ship a key can set off: wireless buttons and cannons. */
+    private fun wireablesOn(level: ServerLevel, ship: LoadedServerShip): List<BlockEntity> =
+        blockEntitiesOn(level, ship).filter { it is Wireable }
+
+    /** The contact point of this button or cannon that really exists, null means the helm. */
+    private fun liveContact(button: Wireable, contacts: List<WiringContact>): BlockPos? =
         button.contact?.takeIf { pos -> contacts.any { it.pos == pos } }
 
     fun sendTo(player: ServerPlayer, helm: BlockPos) {
         val level = player.level()
         val ship = level.getLoadedShipManagingPos(helm) as? LoadedServerShip ?: return
         val contacts = contactsOn(level, ship)
-        val buttons = blockEntitiesOn(level, ship).filterIsInstance<WirelessButtonBlockEntity>()
-            .map { WiringButton(it.blockPos, it.key.orEmpty(), liveContact(it, contacts)) }
+        val buttons = wireablesOn(level, ship).map {
+            val wired = it as Wireable
+            WiringButton(it.blockPos, wired.key.orEmpty(), liveContact(wired, contacts), wired.isCannon)
+        }
         ServerPlayNetworking.send(player, WiringDataPayload(helm, buttons, contacts))
     }
 
@@ -89,8 +94,8 @@ object ShipWiring {
         return ship.takeIf { player.distanceToSqr(inWorld.x, inWorld.y, inWorld.z) < MAX_EDIT_DISTANCE_SQ }
     }
 
-    private fun button(level: ServerLevel, ship: LoadedServerShip, pos: BlockPos): WirelessButtonBlockEntity? =
-        (level.getBlockEntity(pos) as? WirelessButtonBlockEntity)
+    private fun button(level: ServerLevel, ship: LoadedServerShip, pos: BlockPos): Wireable? =
+        (level.getBlockEntity(pos) as? Wireable)
             ?.takeIf { level.getLoadedShipManagingPos(pos)?.id == ship.id }
 
     private fun bindKey(player: ServerPlayer, payload: WiringBindPayload) {
@@ -136,12 +141,11 @@ object ShipWiring {
 
         val contacts = contactsOn(level, ship)
         val atHelm = contacts.any { it.isHelm && it.pos in seated }
-        for (button in blockEntitiesOn(level, ship).filterIsInstance<WirelessButtonBlockEntity>()) {
-            if (button.key != key) continue
-            val contact = liveContact(button, contacts)
-            if (if (contact == null) atHelm else contact in seated) {
-                (button.blockState.block as? WirelessButtonBlock)?.pulse(button.blockState, level, button.blockPos)
-            }
+        for (entity in wireablesOn(level, ship)) {
+            val wired = entity as Wireable
+            if (wired.key != key) continue
+            val contact = liveContact(wired, contacts)
+            if (if (contact == null) atHelm else contact in seated) wired.fireFromKey(level)
         }
     }
 }

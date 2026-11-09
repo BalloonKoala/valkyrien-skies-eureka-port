@@ -41,6 +41,17 @@ object ShipAssembler {
         }
     }
 
+    /**
+     * The blocks [collectBlocks] would turn into a ship, without assembling anything. Stops once there are more than
+     * [limit] of them, a limit of 0 or less means no limit. The second value is false when it stopped there.
+     */
+    fun findBlocks(level: ServerLevel, center: BlockPos, limit: Int, predicate: (BlockState) -> Boolean): Pair<Set<BlockPos>, Boolean> {
+        val blocks = mutableListOf<BlockPos>()
+        blocks.add(center)
+        val complete = bfs(level, center, blocks, predicate, limit, false)
+        return blocks.toSet() to complete
+    }
+
     private fun roundToNearestMultipleOf(number: Double, multiple: Double) = multiple * round(number / multiple)
 
     // modified from https://gamedev.stackexchange.com/questions/83601/from-3d-rotation-snap-to-nearest-90-directions
@@ -183,7 +194,9 @@ object ShipAssembler {
         level: ServerLevel,
         start: BlockPos,
         blocks: MutableList<BlockPos>,
-        predicate: (BlockState) -> Boolean
+        predicate: (BlockState) -> Boolean,
+        limit: Int = EurekaConfig.SERVER.maxShipBlocks,
+        log: Boolean = true
     ): Boolean {
 
         val blacklist = DenseBlockPosSet()
@@ -203,12 +216,12 @@ object ShipAssembler {
                     }
                 }
             }
-            if ((EurekaConfig.SERVER.maxShipBlocks > 0) and (blocks.size > EurekaConfig.SERVER.maxShipBlocks)) {
-                logger.info("Stopped ship assembly due too many blocks")
+            if ((limit > 0) and (blocks.size > limit)) {
+                if (log) logger.info("Stopped ship assembly due too many blocks")
                 return false
             }
         }
-        if (EurekaConfig.SERVER.maxShipBlocks > 0) {
+        if (log && EurekaConfig.SERVER.maxShipBlocks > 0) {
             logger.info("Assembled ship with ${blocks.size} blocks, out of ${EurekaConfig.SERVER.maxShipBlocks} allowed")
         }
         return true

@@ -3,17 +3,23 @@ package org.valkyrienskies.eureka.block
 import net.minecraft.core.BlockPos
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
+import net.minecraft.world.InteractionResult
+import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.Items
 import net.minecraft.world.item.context.BlockPlaceContext
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.DispenserBlock
 import net.minecraft.world.level.block.entity.BlockEntity
+import net.minecraft.world.level.block.entity.BlockEntityTicker
+import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockBehaviour
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.redstone.Orientation
+import net.minecraft.world.phys.BlockHitResult
 import org.joml.Vector3d
 import org.valkyrienskies.eureka.blockentity.CannonBlockEntity
 import org.valkyrienskies.eureka.entity.Cannonball
@@ -21,6 +27,7 @@ import org.valkyrienskies.mod.common.getShipManagingPos
 
 /**
  * Works like a dispenser that only takes TNT: a redstone pulse fires one out of the barrel as a cannonball.
+ * The barrel sits on a swivel and can point anywhere. Sneak and right click it, then look where it should fire.
  */
 class CannonBlock(properties: BlockBehaviour.Properties) : DispenserBlock(properties) {
 
@@ -29,6 +36,22 @@ class CannonBlock(properties: BlockBehaviour.Properties) : DispenserBlock(proper
     // The barrel points where the player is looking, not back at them like a dispenser
     override fun getStateForPlacement(context: BlockPlaceContext): BlockState =
         defaultBlockState().setValue(FACING, context.horizontalDirection)
+
+    override fun useWithoutItem(
+        state: BlockState, level: Level, pos: BlockPos, player: Player, hitResult: BlockHitResult
+    ): InteractionResult {
+        if (!player.isSecondaryUseActive) return super.useWithoutItem(state, level, pos, player, hitResult)
+        if (level is ServerLevel && player is ServerPlayer) {
+            (level.getBlockEntity(pos) as? CannonBlockEntity)?.startAiming(player)
+        }
+        return InteractionResult.SUCCESS
+    }
+
+    override fun <T : BlockEntity> getTicker(
+        level: Level, state: BlockState, type: BlockEntityType<T>
+    ): BlockEntityTicker<T>? = if (level.isClientSide) null else BlockEntityTicker { tickLevel, _, _, blockEntity ->
+        (blockEntity as? CannonBlockEntity)?.serverTick(tickLevel as ServerLevel)
+    }
 
     // Unlike a dispenser, only a signal right at the cannon counts. Side by side or stacked cannons each have their own
     // button, power near the block above one must not fire it.
@@ -53,13 +76,12 @@ class CannonBlock(properties: BlockBehaviour.Properties) : DispenserBlock(proper
             return
         }
         cannon.removeItem(slot, 1)
-        fire(level, state, pos)
+        fire(level, cannon, pos)
     }
 
-    private fun fire(level: ServerLevel, state: BlockState, pos: BlockPos) {
-        val facing = state.getValue(FACING)
-        val direction = Vector3d(facing.stepX.toDouble(), facing.stepY.toDouble(), facing.stepZ.toDouble())
-        val muzzle = Vector3d(pos.x + 0.5, pos.y + 0.5, pos.z + 0.5).fma(MUZZLE_DISTANCE, direction)
+    private fun fire(level: ServerLevel, cannon: CannonBlockEntity, pos: BlockPos) {
+        val direction = cannon.direction()
+        val muzzle = Vector3d(pos.x + 0.5, pos.y + PIVOT_HEIGHT, pos.z + 0.5).fma(MUZZLE_DISTANCE, direction)
         val velocity = Vector3d()
 
         val ship = level.getShipManagingPos(pos)
@@ -79,11 +101,13 @@ class CannonBlock(properties: BlockBehaviour.Properties) : DispenserBlock(proper
         level.sendParticles(ParticleTypes.LARGE_SMOKE, muzzle.x, muzzle.y, muzzle.z, 12, 0.2, 0.2, 0.2, 0.05)
     }
 
-    private companion object {
-        const val DISPENSER_FAIL_EVENT = 1001
-        const val TRIGGER_DELAY_TICKS = 4
-        const val MUZZLE_DISTANCE = 1.1
-        const val SHOT_SPEED = 2.5
-        const val TICKS_PER_SECOND = 20.0
+    companion object {
+        /** Height in the block of the point the barrel swivels around. */
+        const val PIVOT_HEIGHT = 9.0 / 16.0
+        private const val DISPENSER_FAIL_EVENT = 1001
+        private const val TRIGGER_DELAY_TICKS = 4
+        private const val MUZZLE_DISTANCE = 1.1
+        private const val SHOT_SPEED = 2.5
+        private const val TICKS_PER_SECOND = 20.0
     }
 }

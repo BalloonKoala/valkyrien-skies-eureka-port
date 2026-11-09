@@ -1,6 +1,8 @@
 package org.valkyrienskies.eureka
 
 import org.valkyrienskies.core.api.VsBeta
+import org.valkyrienskies.eureka.assembly.AssemblyPreview
+import org.valkyrienskies.eureka.assembly.AssemblyPreviewClient
 import org.valkyrienskies.eureka.ship.EurekaShipControl
 import org.valkyrienskies.eureka.wiring.ShipWiring
 import org.valkyrienskies.eureka.wiring.WiringClient
@@ -19,6 +21,7 @@ object EurekaMod {
         EurekaEntities.register()
         EurekaWeights.register()
         ShipWiring.register()
+        AssemblyPreview.register()
         ValkyrienSkiesMod.vsCore.registerAttachment(EurekaShipControl::class.java)
     }
 
@@ -26,5 +29,6 @@ object EurekaMod {
     fun initClient() {
         EurekaClientScreens.register()
         WiringClient.register()
+        AssemblyPreviewClient.register()
     }
 }

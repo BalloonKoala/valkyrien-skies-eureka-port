@@ -339,34 +339,60 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
         )
 
         oldSpeed = oldSpeed * (1 - s) + control.forwardImpulse.toDouble() * s // from -1 to 1.
-        var speed = oldSpeed * EurekaConfig.SERVER.linearBaseSpeed
+        val baseSpeed = EurekaConfig.SERVER.linearBaseSpeed
+        var speed = oldSpeed * baseSpeed
 
         if (extraForceLinear != 0.0) {
-            // engine boost base
-            var boost = max((extraForceLinear - EurekaConfig.SERVER.enginePowerLinear * EurekaConfig.SERVER.engineBoostOffset) * EurekaConfig.SERVER.engineBoost, 0.0)
-            // base engine power + boost
-            boost = extraForceLinear + boost + boost * boost * EurekaConfig.SERVER.engineBoostExponentialPower
+            // How many fully heated engines this is worth, each one pushes a heavier ship less
+            val engines = extraForceLinear / max(EurekaConfig.SERVER.enginePowerLinear.toDouble(), 1.0)
+            var push = engines * EurekaConfig.SERVER.engineSpeedPerEngine * (
+                max(EurekaConfig.SERVER.engineReferenceMass, 1.0) / max(physShip.mass, 1.0)
+            ).pow(EurekaConfig.SERVER.engineMassExponent.coerceIn(0.0, 2.0))
             // a ship with 50% lift would allow for 50% of power for ship not touching ground.
             val required = EurekaConfig.SERVER.waterContactRequiredForNonFlyingShipEngine
             val waterFactor = if (required <= 0.0) 1.0 else min(1.0, physShip.liquidOverlap / required)
-            boost *= liftFraction + (1.0 - liftFraction) * waterFactor
-            boost = (boost) / scaledMass
+            push *= liftFraction + (1.0 - liftFraction) * waterFactor
+            push /= EurekaConfig.SERVER.speedMassScale
 
-            speed += if (speed < 0) {
-                smoothingATanMax(EurekaConfig.SERVER.maxReverseSpeedFromEngines, boost * oldSpeed)
+            // Speed grows with every engine and levels off at the top speed, which is lower for longer ships
+            val limit = if (speed < 0) {
+                EurekaConfig.SERVER.maxReverseSpeedFromEngines
             } else {
-                smoothingATanMax(EurekaConfig.SERVER.maxSpeedFromEngines, boost * oldSpeed)
+                max(topSpeed(shipLength()) - baseSpeed, 0.0)
             }
+            if (limit > 0.0) speed += limit * tanh(push * oldSpeed / limit)
         }
+        // Never hand the physics a broken number, whatever the config says
+        if (!speed.isFinite()) speed = 0.0
 
         val playerUpDirection = physShip.transform.shipToWorldRotation.transform(Vector3d(0.0, 1.0, 0.0))
         val velOrthogonalToPlayerUp = vel.sub(playerUpDirection.mul(playerUpDirection.dot(vel)), Vector3d())
 
         // This is the speed that the ship is always allowed to go out, without engines
         val baseForwardVel = forwardVector.mul(speed)
-        val forwardForce = baseForwardVel.sub(velOrthogonalToPlayerUp).mul(scaledMass)
+        // Air drag grows with the square of speed. Past stableSpeed the ship pushes harder towards its speed, or drag
+        // would hold small fast ships far under it.
+        val response = max(1.0, abs(speed) / max(EurekaConfig.SERVER.stableSpeed, 1.0))
+        val forwardForce = baseForwardVel.sub(velOrthogonalToPlayerUp).mul(scaledMass * response)
 
         return forwardForce
+    }
+
+    // Longest side of the ship in blocks
+    @OptIn(GameTickOnly::class)
+    private fun shipLength(): Double {
+        val box = ship?.shipAABB ?: return 1.0
+        return max(box.maxX() - box.minX(), max(box.maxY() - box.minY(), box.maxZ() - box.minZ())).toDouble()
+    }
+
+    // Top speed falls off smoothly from smallShipTopSpeed to hugeShipTopSpeed as the ship gets longer
+    private fun topSpeed(length: Double): Double {
+        val config = EurekaConfig.SERVER
+        val small = max(config.smallShipLength, 1.0)
+        val huge = max(config.hugeShipLength, small + 1.0)
+        val l = length.coerceIn(small, huge)
+        val t = ln(l / small) / ln(huge / small)
+        return exp(ln(max(config.smallShipTopSpeed, 0.01)) * (1 - t) + ln(max(config.hugeShipTopSpeed, 0.01)) * t)
     }
 
     // Player controlled elevation

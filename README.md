@@ -5,7 +5,8 @@
 ### Build a ship. Make it fly. Bring your friends.
 
 Valkyrien Skies 2 and Eureka Ships, combined into **one Fabric mod for Minecraft 26.3**,<br>
-with cannons, wireless buttons, a 3D wiring screen and a lot of fixes on top.
+with cannons that aim anywhere, wireless buttons, a 3D wiring screen, a preview before you assemble<br>
+and a lot of fixes on top.
 
 [![Download](https://img.shields.io/badge/Download-Minecraft_26.3-2ea44f?style=for-the-badge&logo=github)](https://github.com/BalloonKoala/valkyrien-skies-eureka-port/releases/latest)
 [![Discord](https://img.shields.io/badge/Discord-Join_us-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/nbZ9nH3aBb)
@@ -49,6 +50,9 @@ with cannons, wireless buttons, a 3D wiring screen and a lot of fixes on top.
 ### 🛳️ Rock-solid ships
 Nothing on deck glitches anymore. Tested on a 36 m/s ship with 120 ms of ping:
 
+- Fixed a crash that hit many Windows players as soon as a ship came into view (*Vertex buffer at slot 1 has been closed*)
+- Players in survival are no longer pulled back while walking on a moving ship
+
 - Players, mobs and items stay exactly where they're standing, even while the ship turns
 - Mobs stop hopping and stop getting pulled across the deck
 - Cows stay in their pens
@@ -64,13 +68,14 @@ Cushions work properly on ships now. Sit on them, break them, and use them as se
 **Driver's seat:** put a cushion on the spot in front of a helm and sit down. You're driving, in a real sitting pose.
 
 ### 💥 Cannons
-A new block that looks like an observer with a huge barrel and wooden wheels.
+A new block: an iron barrel on a wooden carriage with wheels, sitting on a swivel, so it can point **any direction**.
 
 1. Place it. The barrel points the way you're facing.
-2. Open it and load **TNT**. It has 9 slots like a dispenser.
-3. Give it a redstone pulse. It uses 1 TNT and fires a cannonball out of the barrel.
+2. **Aim it:** sneak and right click it with an empty hand, then look where it should fire. The barrel follows your view, straight up and straight down included. Let go of sneak to keep it there.
+3. Open it and load **TNT**. It has 9 slots like a dispenser.
+4. Fire it with a redstone pulse, or with a key from your seat (see the Wiring screen below). It uses 1 TNT and fires a cannonball out of the barrel.
 
-The cannonball explodes when it hits something, and it can blow holes in ships. It fires the way the cannon is pointing, even while your ship is moving and turning. Each cannon only fires from a signal touching it, so cannons side by side or stacked stay separate.
+The cannonball explodes when it hits something, and it can blow holes in ships. It fires exactly where the barrel points, even while your ship is moving and turning. Each cannon only fires from a signal touching it, so cannons side by side or stacked stay separate.
 
 ### 📡 Wireless Buttons
 A button you never touch, in all 12 wood types: oak, spruce, birch, jungle, acacia, dark oak, mangrove, cherry, pale oak, bamboo, crimson and warped. The top is that wood, with a small red rim that glows when it fires.
@@ -80,6 +85,7 @@ You can't press it by hand and arrows don't press it. It only fires from a key y
 ### 🗺️ The Wiring screen
 Open your helm and click the new **Wiring** button. You'll fly around a live 3D view of your ship, like in Blender.
 
+- 🟠 **Orange dots** are your cannons, no buttons needed
 - 🔴 **Red dots** are your wireless buttons
 - 🔵 **Blue dots** are your contact points: every helm and cushion on that ship
 - Dots show right through the walls, and lines show what's wired to what
@@ -94,8 +100,9 @@ Open your helm and click the new **Wiring** button. You'll fly around a live 3D 
 | Sprint key | Fly faster |
 | <kbd>Esc</kbd> | Done |
 
-- **Set a key:** click a red dot, then press any key on your keyboard. Do the same to change it. <kbd>Esc</kbd> cancels.
-- **Rewire a button:** drag its red dot onto a blue dot. Every button starts out wired to the helm.
+- **Set a key:** click an orange or red dot, then press any key on your keyboard. Do the same to change it. <kbd>Esc</kbd> cancels.
+- **Rewire it:** drag its dot onto a blue dot. Every cannon and button starts out wired to the helm.
+- Pressing a cannon's key fires it straight away. Mashing the key fires about as fast as redstone would.
 
 **Firing it:** a key only works when all of this is true:
 
@@ -104,6 +111,31 @@ Open your helm and click the new **Wiring** button. You'll fly around a live 3D 
 - ✅ You press the key
 
 That means every gunner can have their own seat and their own cannons, even with everyone using the same key. Sitting on a cushion in front of a helm counts as both the helm and that cushion.
+
+### 🔎 Check before you assemble
+Pressing **Assemble** on a helm doesn't build the ship straight away anymore. You get a **Ship Info** screen first:
+
+- How many blocks will become the ship, and how big it is
+- A 3D view of **only** those blocks. Drag to turn it, scroll to zoom
+- If your boat is touching a dock, the ground or anything else, you'll see it right there
+
+Press **Assemble** under the info to build the ship, or **Cancel** to go fix it. If it's touching the ground or something huge, the count turns red and Assemble is greyed out.
+
+### 🚀 Engines that scale with your ship
+Every engine makes you faster, and heavier ships get less out of each one. Longer ships also have a lower top speed:
+
+| Longest side | Top speed |
+|---|---|
+| 8 blocks or less | 100 blocks/s |
+| 16 | 76 |
+| 40 | 53 |
+| 150 | 32 |
+| 500 or more | 20 |
+
+A tiny ship with 1 engine does about 24 blocks/s and about 80 with 10 engines. A big ship needs a lot of engines to get anywhere near its top speed. Ships also hold themselves level harder when they go fast, so small fast ships don't tip over. Every number here is a setting in `vs_eureka.toml`.
+
+### 🪂 Take off with an elytra
+Jump off your ship and press jump again to glide, from a ship standing still or one flying at full speed. You keep the ship's speed when you leave it.
 
 ### ⏸️ Pause All engines
 There's a new button in the engine screen. It stops every engine on the ship at once, and any engine can resume them all. Fuel and heat stay exactly where they are, so there's no more pulling coal out of each engine. The pause is saved with the ship.
@@ -226,8 +258,9 @@ Any balloon plus any dye. This one is shapeless too.
 
 - Always back up your world before adding a ship mod.
 - Worlds from Paper versions before 26.1 keep the Nether and End in separate folders, so those won't carry over by themselves.
-- A button fires everything it's touching, like any redstone. Keep each button touching only its own cannon.
+- A button fires everything it's touching, like any redstone. Keep each button touching only its own cannon, or skip the button and wire the cannon to a seat.
 - A button on the deck also powers the block under it, so a cannon directly below that block will fire too.
+- A ship only moves while every chunk under it is loaded. Very long ships need a big view distance on the server.
 
 ## ❤️ Credits
 

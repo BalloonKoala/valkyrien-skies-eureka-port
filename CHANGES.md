@@ -15,11 +15,19 @@ This project is a modified version of **Valkyrien Skies 2.4.11** and **VS Eureka
 - Players stand on the deck at the helm with their hands on the wheel
 - Mouse controls at the helm are no longer reversed
 - Entities attached to ships can be reached, clicked and broken
+- Ship terrain no longer crashes the game when terrain is drawn with multi draw indirect, which most Windows graphics cards and Vulkan use
+- Survival players on moving ships are no longer pulled back by the server's movement check, the same as in 2.4.11
+- Players can start gliding with an elytra from a ship
+- Ships draw without them for a frame instead of crashing when something goes wrong while drawing them
 
 ## New features
 - Cushions work on ships, and a cushion in front of a helm is a driver's seat
 - Pause All button for every engine on a ship
-- Cannon block and cannonball
+- Cannon block and cannonball, with a barrel that can be aimed in any direction
+- Cannons can be wired straight to a helm or cushion and fired with a key, no wireless button needed
+- Ship Info screen before assembling, with the block count and a 3D view of what would become the ship
+- Engine speed depends on the number of engines, the mass and the length of the ship, with new settings for it
+- Ships hold themselves level harder at high speed
 - Wireless Buttons in 12 wood types
 - Wiring screen in the helm, with key binds and contact points
 - Automatic import of worlds made by Paper 26.x
@@ -27,3 +35,4 @@ This project is a modified version of **Valkyrien Skies 2.4.11** and **VS Eureka
 
 ## Removed
 - The warning about known issues when joining, and its config option
+- The engine settings `engineBoost`, `engineBoostOffset`, `engineBoostExponentialPower` and `maxSpeedFromEngines`, replaced by the new speed settings
