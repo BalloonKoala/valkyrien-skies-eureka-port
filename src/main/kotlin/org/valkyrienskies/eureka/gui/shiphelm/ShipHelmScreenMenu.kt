@@ -24,6 +24,10 @@ class ShipHelmScreenMenu(syncId: Int, playerInv: Inventory, private val blockEnt
 
     override fun clickMenuButton(player: Player, id: Int): Boolean {
         if (blockEntity == null) return false
+        if (blockEntity.heldByDetacher) {
+            if (!player.level().isClientSide) blockEntity.refuseWhileHeld(player)
+            return true
+        }
 
         // Shows what would become the ship first, the Assemble button under that preview assembles it
         if (id == 0 && !assembled && player is ServerPlayer) {

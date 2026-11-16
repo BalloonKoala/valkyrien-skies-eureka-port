@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "lit=false": {
+      "model": "vs_eureka:block/electric_weight"
+    },
+    "lit=true": {
+      "model": "vs_eureka:block/electric_weight_on"
+    }
+  }
+}

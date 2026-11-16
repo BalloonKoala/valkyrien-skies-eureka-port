@@ -82,6 +82,12 @@ object EurekaConfig {
         @ConfigEntry(description = "Fastest the far end of a turning ship moves, in blocks per second. Long ships turn slower, so people near the ends don't get flung around")
         var maxTurnEdgeSpeed = 30.0
 
+        @ConfigEntry(description = "Mass in kg of an Electric Weight that's off, the same as an oak log")
+        var electricWeightOffMass = 800.0
+
+        @ConfigEntry(description = "Mass in kg of an Electric Weight that's on, the same as a netherite block")
+        var electricWeightOnMass = 89680.0
+
         @ConfigEntry(description = "Ships with a helm heavier than this many kg (about 2000 blocks) skip Valkyrien Skies' block by block air drag, which costs a lot on big ships. Steering and levelling still slow them down")
         var noBlockDragAboveMass = 1000000.0
 

@@ -24,6 +24,8 @@ object EurekaMod {
         AssemblyPreview.register()
         org.valkyrienskies.eureka.block.ShipHelmBlock.registerCrouchToOpen()
         org.valkyrienskies.eureka.block.CannonBlock.registerCrouchToAim()
+        org.valkyrienskies.eureka.block.DetacherBlock.registerCrouchToOpen()
+        org.valkyrienskies.eureka.block.DetacherBlock.registerPushes()
         net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
             org.valkyrienskies.eureka.command.BuildCommand.register(dispatcher)
         }

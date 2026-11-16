@@ -80,7 +80,7 @@ object ShipWiring {
         val contacts = contactsOn(level, ship)
         val buttons = wireablesOn(level, ship).map {
             val wired = it as Wireable
-            WiringButton(it.blockPos, wired.key.orEmpty(), liveContact(wired, contacts), wired.isCannon)
+            WiringButton(it.blockPos, wired.key.orEmpty(), liveContact(wired, contacts), wired.isCannon, wired.isDetacher)
         }
         ServerPlayNetworking.send(player, WiringDataPayload(helm, buttons, contacts))
     }

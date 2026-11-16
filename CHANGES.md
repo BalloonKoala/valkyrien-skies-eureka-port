@@ -38,6 +38,9 @@ This project is a modified version of **Valkyrien Skies 2.4.11** and **VS Eureka
 - Crouching and right clicking a helm opens it whatever is in the player's hands
 - Crouching and left clicking a cannon aims it whatever is in the player's hand, without breaking it
 - Cannons can be wired straight to a helm or cushion and fired with a key, no wireless button needed
+- Detacher block: on a redstone signal or its key it lets go of what's on its red face, which becomes a ship of its own and gets pushed off half a block to 6 blocks, set with crouch and right click. Nothing happens if that part is still held on another way
+- When a Detacher holds nothing, it grabs: a metal pole goes out up to 5 blocks, and another ship it hits is pulled in against the red face and becomes part of the ship until it's let go. Helms on a held ship don't work. The pole never grabs the ground
+- Electric Weight block: every redstone pulse switches it, like a copper bulb. Off it weighs as much as an oak log, on as much as a block of netherite (`electricWeightOffMass`, `electricWeightOnMass`)
 - Ship Info screen before assembling, with the block count and a 3D view of what would become the ship
 - Blocks players place are remembered per chunk, and only those can become a ship, through the helm or VS's assembler items
 - `/vs build unassemble` and `/vs build delete`, for all ships or the ones within a distance

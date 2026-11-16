@@ -849,8 +849,11 @@ class DevClientTest : FabricClientGameTest {
         }
     }
 
+    // VS_TEST_RECIPES=<name> only shoots the recipes with that in their name
     private fun recipes() = mezz.jei.common.Internal.getJeiRuntime().recipeManager.createRecipeLookup(RecipeTypes.CRAFTING).get().toList()
-        .filter { it.id().identifier().namespace == "vs_eureka" }.sortedBy { it.id().identifier().path }
+        .filter { it.id().identifier().namespace == "vs_eureka" }
+        .filter { System.getenv("VS_TEST_RECIPES").let { only -> only == null || only == "1" || it.id().identifier().path.contains(only) } }
+        .sortedBy { it.id().identifier().path }
 
     // A clear look at a player at the helm of an open deck
     private fun stanceTest(context: ClientGameTestContext) {
@@ -1107,6 +1110,351 @@ class DevClientTest : FabricClientGameTest {
     }
 
     // Aiming cannons and taking off with an elytra on the open deck, see DevFeatureTest
+    // The detacher with real input: placed by clicking the deck, set up with crouch and right click, set off by a
+    // button and by its key from the helm, wired in the wiring screen. One still held on another way must stay put.
+    private fun detacherCheck(context: ClientGameTestContext, server: net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext) {
+        val g = InputConstants.getKey("key.keyboard.g")
+        val detacherItem = BuiltInRegistries.ITEM.getValue(Identifier.parse("vs_eureka:detacher"))
+        val planks = Blocks.OAK_PLANKS.defaultBlockState()
+        lateinit var a: BlockPos
+        lateinit var b: BlockPos
+        lateinit var c: BlockPos
+        var shipsBefore = emptySet<Long>()
+        fun ships() = server.computeOnServer<Set<Long>, RuntimeException> { s -> s.overworld().shipObjectWorld.allShips.map { it.id }.toSet() }
+        fun report(tag: String) = server.runOnServer<RuntimeException> { s ->
+            val level = s.overworld()
+            val newOnes = level.shipObjectWorld.allShips.filter { it.id !in shipsBefore }
+            val parent = level.shipObjectWorld.allShips.getById(DevSelfTest.lifted!!.id)!!
+            log("detacher $tag new ships=${newOnes.size} " + newOnes.joinToString { ship ->
+                val box = ship.shipAABB
+                val blocks = if (box == null) 0 else BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())
+                    .count { !level.getBlockState(it).isAir }
+                val relative = Vector3d(ship.velocity).sub(parent.velocity)
+                "(blocks=$blocks speed away=%.2f up=%.2f)".format(relative.length(), relative.y)
+            } + " | A held=${level.getBlockState(a.above()).block.descriptionId} C held=${level.getBlockState(c.above()).block.descriptionId}")
+        }
+        // Within reach of a spot on the ship, a little to the south west of it
+        fun standBy(at: BlockPos) {
+            server.runOnServer<RuntimeException> { s ->
+                val level = s.overworld()
+                val ship = level.shipObjectWorld.loadedShips.getById(DevSelfTest.lifted!!.id)!!
+                val world = ship.shipToWorld.transformPosition(Vector3d(at.x - 1.5, at.y + 0.05, at.z + 2.5))
+                s.playerList.players[0].teleportTo(world.x, world.y, world.z)
+            }
+            context.waitTicks(10)
+        }
+        fun place(at: BlockPos) {
+            standBy(at)
+            aimAtShipPoint(context, Vector3d(at.x + 0.5, at.y.toDouble(), at.z + 0.5))
+            context.input.pressKey { it.keyUse }
+            context.waitTicks(8)
+        }
+
+        server.runOnServer<RuntimeException> { s ->
+            val level = s.overworld()
+            val seat = DevSelfTest.seatPos(level)
+            a = seat.offset(-3, 0, -4)
+            b = seat.offset(3, 0, -4)
+            c = seat.offset(1, 0, -2)
+            val p = s.playerList.players[0]
+            p.setGameMode(net.minecraft.world.level.GameType.SURVIVAL)
+            p.setItemInHand(InteractionHand.MAIN_HAND, ItemStack(detacherItem, 3))
+            DevSelfTest.standNearSeat(level, 0)
+        }
+        context.waitTicks(15)
+        // Placed the way a player does, clicking the top of the deck, so the red face looks up
+        for (at in listOf(a, b, c)) place(at)
+        server.runOnServer<RuntimeException> { s ->
+            val level = s.overworld()
+            fun put(pos: BlockPos, state: net.minecraft.world.level.block.state.BlockState) {
+                level.setBlock(pos, state, 3)
+                org.valkyrienskies.mod.common.PlacedBlocks.markPlaced(level, pos)
+            }
+            for (at in listOf(a, b, c)) log("detacher placed at $at ${level.getBlockState(at)}")
+            // A: a 2x2x2 crate on top, and a button on its side
+            for (x in 0..1) for (y in 1..2) for (z in 0..1) put(a.offset(x, y, z), planks)
+            put(a.west(), Blocks.STONE_BUTTON.defaultBlockState()
+                .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.ATTACH_FACE, net.minecraft.world.level.block.state.properties.AttachFace.WALL)
+                .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING, net.minecraft.core.Direction.WEST))
+            // B: one block on top
+            put(b.above(), Blocks.OAK_LOG.defaultBlockState())
+            // C: the block on top also stands on the deck next to it, so letting go of it does nothing
+            put(c.above(), planks)
+            put(c.offset(1, 1, 0), planks)
+            put(c.offset(1, 0, 0), planks)
+        }
+        context.waitTicks(10)
+        shipsBefore = ships()
+
+        // Crouch and right click opens the settings, with detachers still in hand
+        standBy(a)
+        aimAtShipPoint(context, Vector3d(a.x + 0.5, a.y + 0.5, a.z + 1.0))
+        context.input.holdKey { it.keyShift }
+        context.waitTicks(3)
+        context.input.pressKey { it.keyUse }
+        context.input.releaseKey { it.keyShift }
+        context.waitTicks(10)
+        val opened = context.computeOnClient<String, RuntimeException> { mc -> mc.gui.screen()?.javaClass?.simpleName ?: "none" }
+        log("detacher crouch click opened $opened")
+        val slider = context.computeOnClient<DoubleArray?, RuntimeException> { mc ->
+            val screen = mc.gui.screen() ?: return@computeOnClient null
+            val widget = screen.children().filterIsInstance<net.minecraft.client.gui.components.AbstractSliderButton>().firstOrNull()
+                ?: return@computeOnClient null
+            val scale = mc.window.screenWidth.toDouble() / mc.window.guiScaledWidth
+            doubleArrayOf((widget.x + 2) * scale, (widget.y + widget.height / 2.0) * scale, (widget.x + widget.width - 2) * scale, widget.message.string.length.toDouble())
+        }
+        shot(context, "detacher_settings_before")
+        if (slider != null) {
+            context.input.setCursorPos(slider[0], slider[1])
+            context.waitTicks(3)
+            context.input.holdMouse(InputConstants.MOUSE_BUTTON_LEFT)
+            context.waitTicks(3)
+            for (step in 1..6) {
+                context.input.setCursorPos(slider[0] + (slider[2] - slider[0]) * step / 6.0, slider[1])
+                context.waitTicks(2)
+            }
+            context.input.releaseMouse(InputConstants.MOUSE_BUTTON_LEFT)
+            context.waitTicks(10)
+        }
+        context.runOnClient<RuntimeException> { mc ->
+            val widget = mc.gui.screen()?.children()?.filterIsInstance<net.minecraft.client.gui.components.AbstractSliderButton>()?.firstOrNull()
+            log("detacher slider shows ${widget?.message?.string}")
+        }
+        shot(context, "detacher_settings_after")
+        context.input.pressKey(InputConstants.getKey("key.keyboard.escape"))
+        context.waitTicks(10)
+        server.runOnServer<RuntimeException> { s ->
+            val be = s.overworld().getBlockEntity(a) as org.valkyrienskies.eureka.blockentity.DetacherBlockEntity
+            log("detacher A push setting ${be.push} blocks")
+        }
+        shot(context, "detacher_before")
+
+        // A: press its button with a real click
+        standBy(a)
+        aimAtShipPoint(context, Vector3d(a.x - 0.1, a.y + 0.5, a.z + 0.5))
+        context.input.pressKey { it.keyUse }
+        context.waitTicks(4)
+        report("A after its button")
+        context.waitTicks(6)
+        shot(context, "detacher_after_button")
+        report("A half a second later")
+
+        // B: wire it to the helm in the wiring screen, with G
+        server.runOnServer<RuntimeException> { s -> log("detacher helm menu ${s.playerList.players[0].openMenu(DevSelfTest.helm(s.overworld())!!)}") }
+        context.waitTicks(10)
+        context.clickScreenButton("gui.vs_eureka.wiring")
+        context.waitTicks(20)
+        context.runOnClient<RuntimeException> { mc ->
+            val screen = wiringScreen(mc)
+            log("detacher wiring screen detachers=${screen?.buttons()?.count { it.isDetacher }}")
+            WiringCamera.position.set(b.x + 0.5, b.y + 12.0, b.z + 0.5)
+            WiringCamera.yaw = 0f
+            WiringCamera.pitch = 89f
+        }
+        context.waitTicks(5)
+        shot(context, "detacher_wiring")
+        val dot = screenPixel(context, b)
+        context.input.setCursorPos(dot[0], dot[1])
+        context.waitTicks(3)
+        context.input.pressMouse(InputConstants.MOUSE_BUTTON_LEFT)
+        context.waitTicks(5)
+        context.input.pressKey(g)
+        context.waitTicks(6)
+        context.input.pressKey(InputConstants.getKey("key.keyboard.escape"))
+        context.waitTicks(10)
+        server.runOnServer<RuntimeException> { s ->
+            val level = s.overworld()
+            val be = level.getBlockEntity(b) as org.valkyrienskies.eureka.blockentity.DetacherBlockEntity
+            log("detacher B wired key=${be.key} contact=${be.contact ?: "helm"}")
+            log("detacher sat ${DevSelfTest.helm(level)!!.sit(s.playerList.players[0], true)}")
+        }
+        context.waitTicks(10)
+        context.input.pressKey(g)
+        context.waitTicks(6)
+        report("B after G at the helm")
+
+        // C: still held on by the deck next to it
+        server.runOnServer<RuntimeException> { s -> org.valkyrienskies.eureka.block.DetacherBlock.release(s.overworld(), c) }
+        context.waitTicks(4)
+        report("C after letting go")
+    }
+
+    // Grab mode with real clicks: a detacher with nothing on its red face shoots its pole at a raft three blocks off,
+    // pulls it in and makes it part of the ship, its helm locked. Pressed again it lets the raft go and the helm works.
+    // One pointing at nothing comes back empty. An electric weight changes the ship's mass when switched.
+    private fun grabCheck(context: ClientGameTestContext, server: net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext) {
+        val detacher = BuiltInRegistries.BLOCK.getValue(Identifier.parse("vs_eureka:detacher")).defaultBlockState()
+        val weight = BuiltInRegistries.BLOCK.getValue(Identifier.parse("vs_eureka:electric_weight")).defaultBlockState()
+        val button = Blocks.STONE_BUTTON.defaultBlockState()
+            .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.ATTACH_FACE, net.minecraft.world.level.block.state.properties.AttachFace.FLOOR)
+        lateinit var d: BlockPos
+        lateinit var e: BlockPos
+        lateinit var w: BlockPos
+        var raftId = -1L
+        fun ship(level: net.minecraft.server.level.ServerLevel) = level.shipObjectWorld.loadedShips.getById(DevSelfTest.lifted!!.id)!!
+        fun standBy(at: BlockPos) {
+            server.runOnServer<RuntimeException> { s ->
+                val world = ship(s.overworld()).shipToWorld.transformPosition(Vector3d(at.x + 1.5, at.y + 1.05, at.z + 2.5))
+                s.playerList.players[0].teleportTo(world.x, world.y, world.z)
+            }
+            context.waitTicks(10)
+        }
+        fun press(at: BlockPos, standAt: BlockPos = at) {
+            standBy(standAt)
+            aimAtShipPoint(context, Vector3d(at.x + 0.5, at.y + 1.05, at.z + 0.5))
+            context.input.pressKey { it.keyUse }
+        }
+        fun report(tag: String) = server.runOnServer<RuntimeException> { s ->
+            val level = s.overworld()
+            val parent = ship(level)
+            val held = BlockPos.betweenClosed(d.offset(-8, -3, -4), d.offset(0, 4, 4))
+                .mapNotNull { level.getBlockEntity(it) as? org.valkyrienskies.eureka.blockentity.ShipHelmBlockEntity }
+            val raft = level.shipObjectWorld.allShips.getById(raftId)
+            val loose = level.shipObjectWorld.allShips.filter { it.id != parent.id && it.id != raftId }
+            log("grab $tag ships=${level.shipObjectWorld.allShips.size} raft ship there=${raft != null} " +
+                "D holds=${level.getBlockState(d.west()).block.descriptionId} helms on this ship=${held.size} held=${held.count { it.heldByDetacher }} " +
+                "new ships=" + loose.joinToString { "(%.1f %.1f %.1f) speed %.2f".format(it.transform.positionInWorld.x(), it.transform.positionInWorld.y(), it.transform.positionInWorld.z(), Vector3d(it.velocity).sub(parent.velocity).length()) } +
+                " mass=%.0f".format(parent.inertiaData.mass))
+        }
+
+        server.runOnServer<RuntimeException> { s ->
+            val level = s.overworld()
+            val seat = DevSelfTest.seatPos(level)
+            d = seat.offset(-7, -1, -4)
+            e = seat.offset(7, -1, -4)
+            w = seat.offset(2, 0, -2)
+            fun put(pos: BlockPos, state: net.minecraft.world.level.block.state.BlockState) {
+                level.setBlock(pos, state, 3)
+                org.valkyrienskies.mod.common.PlacedBlocks.markPlaced(level, pos)
+            }
+            put(d, detacher.setValue(net.minecraft.world.level.block.DirectionalBlock.FACING, net.minecraft.core.Direction.WEST))
+            put(d.above(), button)
+            put(e, detacher.setValue(net.minecraft.world.level.block.DirectionalBlock.FACING, net.minecraft.core.Direction.EAST))
+            put(e.above(), button)
+            put(w, weight)
+            put(w.above(), button)
+            // The raft, three blocks out from the red face, with balloons under it and its own helm
+            val p = s.playerList.players[0]
+            p.setGameMode(net.minecraft.world.level.GameType.SURVIVAL)
+            // Stepping off a raft shouldn't end the test
+            p.abilities.invulnerable = true
+            p.onUpdateAbilities()
+            p.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY)
+            val face = ship(level).shipToWorld.transformPosition(Vector3d(d.x + 0.0, d.y + 0.5, d.z + 0.5))
+            val edge = BlockPos.containing(face.x - 4.0, face.y, face.z)
+            for (x in -2..0) for (z in -1..1) {
+                level.setBlock(edge.offset(x, 0, z), Blocks.SPRUCE_PLANKS.defaultBlockState(), 3)
+                level.setBlock(edge.offset(x, -1, z), BuiltInRegistries.BLOCK.getValue(Identifier.parse("vs_eureka:balloon")).defaultBlockState(), 3)
+            }
+            val helm = edge.offset(-1, 1, 0)
+            level.setBlock(helm, BuiltInRegistries.BLOCK.getValue(Identifier.parse("vs_eureka:oak_ship_helm")).defaultBlockState()
+                .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING, net.minecraft.core.Direction.NORTH), 3)
+            raftId = org.valkyrienskies.eureka.util.ShipAssembler.collectBlocks(level, helm) { !it.isAir }!!.id
+            log("grab raft built at $edge, face at ${"(%.1f %.1f %.1f)".format(face.x, face.y, face.z)}")
+        }
+        context.waitTicks(40)
+        val weightOnly = System.getenv("VS_TEST_GRAB") == "weight"
+        // Stands on the plank next to a helm on any ship and right clicks it, like a player would
+        fun clickHelm(shipId: Long, helm: BlockPos) {
+            server.runOnServer<RuntimeException> { s ->
+                val onShip = s.overworld().shipObjectWorld.loadedShips.getById(shipId)!!
+                val world = onShip.shipToWorld.transformPosition(Vector3d(helm.x + 0.5, helm.y + 0.0, helm.z + 1.5))
+                s.playerList.players[0].teleportTo(world.x, world.y, world.z)
+            }
+            context.waitTicks(3)
+            context.runOnClient<RuntimeException> { mc ->
+                val player = mc.player!!
+                val onShip = mc.level!!.shipObjectWorld.loadedShips.getById(shipId)!!
+                val target = onShip.renderTransform.shipToWorld.transformPosition(Vector3d(helm.x + 0.5, helm.y + 0.5, helm.z + 0.5))
+                val eye = player.getEyePosition(1f)
+                player.yRot = Math.toDegrees(Math.atan2(-(target.x - eye.x), target.z - eye.z)).toFloat()
+                player.xRot = Math.toDegrees(-Math.atan2(target.y - eye.y, Math.hypot(target.x - eye.x, target.z - eye.z))).toFloat()
+            }
+            context.waitTicks(2)
+            context.input.pressKey { it.keyUse }
+            context.waitTicks(6)
+        }
+        fun helmsIn(level: net.minecraft.server.level.ServerLevel, box: org.joml.primitives.AABBic) =
+            BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())
+                .mapNotNull { (level.getBlockEntity(it) as? org.valkyrienskies.eureka.blockentity.ShipHelmBlockEntity)?.let { h -> h.blockPos.immutable() } }
+        if (!weightOnly) {
+        report("before")
+
+        press(d)
+        context.waitTicks(5)
+        shot(context, "grab_pole_out")
+        context.waitTicks(8)
+        shot(context, "grab_pulling")
+        context.waitTicks(15)
+        report("after grabbing")
+        shot(context, "grab_merged")
+
+        // The grabbed raft's helm, now on this ship, turns the player away
+        val heldHelm = server.computeOnServer<BlockPos, RuntimeException> { s ->
+            val level = s.overworld()
+            BlockPos.betweenClosed(d.offset(-8, -3, -4), d.offset(0, 4, 4))
+                .first { level.getBlockEntity(it) is org.valkyrienskies.eureka.blockentity.ShipHelmBlockEntity }.immutable()
+        }
+        clickHelm(DevSelfTest.lifted!!.id, heldHelm)
+        server.runOnServer<RuntimeException> { s ->
+            val p = s.playerList.players[0]
+            log("grab right clicked the grabbed helm: sitting=${p.isPassenger} helm held=${(s.overworld().getBlockEntity(heldHelm) as org.valkyrienskies.eureka.blockentity.ShipHelmBlockEntity).heldByDetacher}")
+        }
+        shot(context, "grab_helm_refused")
+
+        // One with nothing in front of it shoots out and comes back empty
+        val shipsBefore = server.computeOnServer<Int, RuntimeException> { s -> s.overworld().shipObjectWorld.allShips.size }
+        // E is on the ship's east edge, so stand on the deck west of it
+        press(e, e.offset(-3, 0, 0))
+        context.waitTicks(4)
+        server.runOnServer<RuntimeException> { s ->
+            val pole = s.overworld().getBlockEntity(e) as org.valkyrienskies.eureka.blockentity.DetacherBlockEntity
+            log("grab miss pole out=${pole.poleOut} reach=${pole.poleReach}")
+        }
+        shot(context, "grab_miss_out")
+        context.waitTicks(20)
+        server.runOnServer<RuntimeException> { s ->
+            val level = s.overworld()
+            val pole = level.getBlockEntity(e) as org.valkyrienskies.eureka.blockentity.DetacherBlockEntity
+            log("grab miss ships before=$shipsBefore after=${level.shipObjectWorld.allShips.size} pole back in=${!pole.poleOut} E holds=${level.getBlockState(e.east()).block.descriptionId}")
+        }
+        }
+
+        for (i in 1..2) {
+            press(w)
+            context.waitTicks(4)
+            if (i == 1) shot(context, "grab_weight_on")
+            context.waitTicks(6)
+            server.runOnServer<RuntimeException> { s ->
+                val level = s.overworld()
+                log("grab weight press $i lit=${level.getBlockState(w).getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT)} mass=%.0f".format(ship(level).inertiaData.mass))
+            }
+            context.waitTicks(25)
+        }
+        if (weightOnly) return
+
+        // Let go: the raft is its own ship again and its helm works
+        press(d)
+        context.waitTicks(15)
+        report("after letting go")
+        val loose = server.computeOnServer<Pair<Long, BlockPos>?, RuntimeException> { s ->
+            val level = s.overworld()
+            val ship = level.shipObjectWorld.loadedShips.firstOrNull { it.id != DevSelfTest.lifted!!.id } ?: return@computeOnServer null
+            ship.id to helmsIn(level, ship.shipAABB!!).first()
+        }
+        if (loose == null) {
+            log("grab FAIL nothing was let go")
+            return
+        }
+        clickHelm(loose.first, loose.second)
+        server.runOnServer<RuntimeException> { s ->
+            val p = s.playerList.players[0]
+            val helm = s.overworld().getBlockEntity(loose.second) as org.valkyrienskies.eureka.blockentity.ShipHelmBlockEntity
+            log("grab right clicked the let-go helm: sitting=${p.isPassenger} on=${p.vehicle?.type} helm held=${helm.heldByDetacher}")
+        }
+        shot(context, "grab_let_go_seated")
+    }
+
     private fun featureTest(context: ClientGameTestContext) {
         context.worldBuilder().setUseConsistentSettings(false).create().use { world ->
             val server = world.server
@@ -1121,6 +1469,14 @@ class DevClientTest : FabricClientGameTest {
             context.waitTicks(125)
             if (System.getenv("VS_TEST_HELM") != null) {
                 helmCheck(context, server)
+                return@use
+            }
+            if (System.getenv("VS_TEST_GRAB") != null) {
+                grabCheck(context, server)
+                return@use
+            }
+            if (System.getenv("VS_TEST_DETACHER") != null) {
+                detacherCheck(context, server)
                 return@use
             }
             if (System.getenv("VS_TEST_CANNON_WIRE") != null) {

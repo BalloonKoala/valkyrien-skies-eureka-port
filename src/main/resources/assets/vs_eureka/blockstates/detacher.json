@@ -1,0 +1,27 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "vs_eureka:block/detacher"
+    },
+    "facing=east": {
+      "model": "vs_eureka:block/detacher",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "vs_eureka:block/detacher",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "vs_eureka:block/detacher",
+      "y": 270
+    },
+    "facing=up": {
+      "model": "vs_eureka:block/detacher",
+      "x": 270
+    },
+    "facing=down": {
+      "model": "vs_eureka:block/detacher",
+      "x": 90
+    }
+  }
+}

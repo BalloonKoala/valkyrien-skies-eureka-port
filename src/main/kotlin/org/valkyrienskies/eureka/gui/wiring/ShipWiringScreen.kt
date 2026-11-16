@@ -153,13 +153,19 @@ class ShipWiringScreen(private var data: WiringDataPayload) : Screen(Component.t
             val color = when {
                 button.pos == binding?.pos -> BINDING_COLOR
                 button.isCannon -> CANNON_COLOR
+                button.isDetacher -> DETACHER_COLOR
                 else -> BUTTON_COLOR
             }
             dot(graphics, at[0], at[1], BUTTON_RADIUS + 1, OUTLINE_COLOR)
             dot(graphics, at[0], at[1], BUTTON_RADIUS, color)
-            graphics.centeredText(font, keyName(button.key), at[0], at[1] - BUTTON_RADIUS - 11,
-                if (button.isCannon) CANNON_TEXT_COLOR else BUTTON_TEXT_COLOR)
+            val textColor = when {
+                button.isCannon -> CANNON_TEXT_COLOR
+                button.isDetacher -> DETACHER_TEXT_COLOR
+                else -> BUTTON_TEXT_COLOR
+            }
+            graphics.centeredText(font, keyName(button.key), at[0], at[1] - BUTTON_RADIUS - 11, textColor)
             if (button.isCannon) graphics.centeredText(font, CANNON_TEXT, at[0], at[1] + BUTTON_RADIUS + 3, CANNON_TEXT_COLOR)
+            if (button.isDetacher) graphics.centeredText(font, DETACHER_TEXT, at[0], at[1] + BUTTON_RADIUS + 3, DETACHER_TEXT_COLOR)
         }
 
         graphics.centeredText(font, title, width / 2, 6, TITLE_COLOR)
@@ -275,6 +281,8 @@ class ShipWiringScreen(private var data: WiringDataPayload) : Screen(Component.t
         const val BUTTON_COLOR = 0xFFFF2020.toInt()
         const val CANNON_COLOR = 0xFFFF9A1F.toInt()
         const val CANNON_TEXT_COLOR = 0xFFFFD8A0.toInt()
+        const val DETACHER_COLOR = 0xFFB050FF.toInt()
+        const val DETACHER_TEXT_COLOR = 0xFFE0C0FF.toInt()
         const val BINDING_COLOR = 0xFFFFD020.toInt()
         const val CONTACT_COLOR = 0xFF2F7BFF.toInt()
         const val OUTLINE_COLOR = 0xFF101018.toInt()
@@ -294,5 +302,6 @@ class ShipWiringScreen(private var data: WiringDataPayload) : Screen(Component.t
         val HELM_TEXT: Component = Component.translatable("gui.vs_eureka.wiring.helm")
         val CUSHION_TEXT: Component = Component.translatable("gui.vs_eureka.wiring.cushion")
         val CANNON_TEXT: Component = Component.translatable("gui.vs_eureka.wiring.cannon")
+        val DETACHER_TEXT: Component = Component.translatable("gui.vs_eureka.wiring.detacher")
     }
 }

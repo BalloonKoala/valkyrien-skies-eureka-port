@@ -19,10 +19,10 @@ private fun <T> FriendlyByteBuf.writeItems(items: List<T>, write: (FriendlyByteB
 }
 
 /**
- * A wireless button, or a cannon when [isCannon] is set. [key] is empty when nothing is bound, [contact] is null when
+ * A wireless button, or a cannon when [isCannon] is set, or a detacher when [isDetacher] is. [key] is empty when nothing is bound, [contact] is null when
  * it still goes to the helm.
  */
-data class WiringButton(val pos: BlockPos, val key: String, val contact: BlockPos?, val isCannon: Boolean = false)
+data class WiringButton(val pos: BlockPos, val key: String, val contact: BlockPos?, val isCannon: Boolean = false, val isDetacher: Boolean = false)
 
 data class WiringContact(val pos: BlockPos, val isHelm: Boolean)
 
@@ -41,6 +41,7 @@ data class WiringDataPayload(val helm: BlockPos, val buttons: List<WiringButton>
                     out.writeBoolean(button.contact != null)
                     button.contact?.let { out.writeBlockPos(it) }
                     out.writeBoolean(button.isCannon)
+                    out.writeBoolean(button.isDetacher)
                 }
                 buf.writeItems(payload.contacts) { out, contact ->
                     out.writeBlockPos(contact.pos)
@@ -50,7 +51,7 @@ data class WiringDataPayload(val helm: BlockPos, val buttons: List<WiringButton>
             { buf ->
                 WiringDataPayload(
                     buf.readBlockPos(),
-                    buf.readItems { WiringButton(it.readBlockPos(), it.readUtf(), if (it.readBoolean()) it.readBlockPos() else null, it.readBoolean()) },
+                    buf.readItems { WiringButton(it.readBlockPos(), it.readUtf(), if (it.readBoolean()) it.readBlockPos() else null, it.readBoolean(), it.readBoolean()) },
                     buf.readItems { WiringContact(it.readBlockPos(), it.readBoolean()) }
                 )
             }

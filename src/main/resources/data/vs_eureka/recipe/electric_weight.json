@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "pattern": [
+    "IRI",
+    "CBC",
+    "IRI"
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "R": "minecraft:redstone",
+    "C": "minecraft:copper_ingot",
+    "B": "minecraft:iron_block"
+  },
+  "result": {
+    "count": 1,
+    "id": "vs_eureka:electric_weight"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "vs_eureka:block/detacher_side",
+    "north": "vs_eureka:block/detacher_front",
+    "south": "vs_eureka:block/detacher_back",
+    "east": "vs_eureka:block/detacher_side",
+    "west": "vs_eureka:block/detacher_side",
+    "up": "vs_eureka:block/detacher_side",
+    "down": "vs_eureka:block/detacher_side"
+  }
+}

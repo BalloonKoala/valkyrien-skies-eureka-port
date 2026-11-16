@@ -1,5 +1,7 @@
 package org.valkyrienskies.eureka
 
+import net.minecraft.world.level.block.state.properties.BlockStateProperties
+import org.valkyrienskies.eureka.block.DetacherBlock
 import net.minecraft.resources.Identifier
 import net.minecraft.resources.ResourceKey
 import net.minecraft.core.registries.Registries
@@ -38,6 +40,19 @@ object EurekaBlocks {
                 .sound(SoundType.STONE).isRedstoneConductor { _, _, _ -> false }
                 // The model doesn't fill the block, blocks around it have to keep their faces
                 .noOcclusion()
+        )
+    }
+    val DETACHER = BLOCKS.register("detacher") {
+        DetacherBlock(
+            // Not a conductor, like a cannon, so a button on it doesn't set off what's next to it
+            eurekaBlockProperties("detacher").mapColor(MapColor.COLOR_BLACK).strength(3.5F).requiresCorrectToolForDrops()
+                .sound(SoundType.NETHERITE_BLOCK).isRedstoneConductor { _, _, _ -> false }
+        )
+    }
+    val ELECTRIC_WEIGHT = BLOCKS.register("electric_weight") {
+        org.valkyrienskies.eureka.block.ElectricWeightBlock(
+            eurekaBlockProperties("electric_weight").mapColor(MapColor.METAL).strength(5.0F).requiresCorrectToolForDrops()
+                .sound(SoundType.COPPER).lightLevel { if (it.getValue(BlockStateProperties.LIT)) 12 else 0 }
         )
     }
     val ENGINE = BLOCKS.register("engine", ::EngineBlock)

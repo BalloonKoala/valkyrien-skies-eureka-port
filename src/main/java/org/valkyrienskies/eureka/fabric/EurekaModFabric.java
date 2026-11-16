@@ -71,11 +71,20 @@ public class EurekaModFabric implements ModInitializer {
                     CannonBlockEntityRenderer::new
             );
 
+            BlockEntityRenderers.register(
+                    EurekaBlockEntities.INSTANCE.getDETACHER().get(),
+                    org.valkyrienskies.eureka.blockentity.renderer.DetacherBlockEntityRenderer::new
+            );
+
             ModelLoadingPlugin.register(context -> {
                 context.addModel(CannonModels.INSTANCE.getMount(), SimpleUnbakedExtraModel.blockStateModel(
                     Identifier.fromNamespaceAndPath(EurekaMod.MOD_ID, "block/cannon_mount")));
                 context.addModel(CannonModels.INSTANCE.getBarrel(), SimpleUnbakedExtraModel.blockStateModel(
                     Identifier.fromNamespaceAndPath(EurekaMod.MOD_ID, "block/cannon_barrel")));
+                context.addModel(org.valkyrienskies.eureka.blockentity.renderer.DetacherModels.INSTANCE.getPole(),
+                    SimpleUnbakedExtraModel.blockStateModel(Identifier.fromNamespaceAndPath(EurekaMod.MOD_ID, "block/detacher_pole")));
+                context.addModel(org.valkyrienskies.eureka.blockentity.renderer.DetacherModels.INSTANCE.getHead(),
+                    SimpleUnbakedExtraModel.blockStateModel(Identifier.fromNamespaceAndPath(EurekaMod.MOD_ID, "block/detacher_pole_head")));
                 for (final IWoodType woodType : WoodType.getEntries()) {
                     context.addModel(
                         WheelModels.INSTANCE.getKeys().get(woodType),

@@ -1,5 +1,6 @@
 package org.valkyrienskies.eureka
 
+import org.valkyrienskies.eureka.blockentity.DetacherBlockEntity
 import net.fabricmc.fabric.api.`object`.builder.v1.block.entity.FabricBlockEntityTypeBuilder
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Registry
@@ -34,6 +35,8 @@ object EurekaBlockEntities {
     val ENGINE = EurekaBlocks.ENGINE withBE ::EngineBlockEntity byName "engine"
 
     val CANNON = EurekaBlocks.CANNON withBE ::CannonBlockEntity byName "cannon"
+
+    val DETACHER = EurekaBlocks.DETACHER withBE ::DetacherBlockEntity byName "detacher"
 
     val WIRELESS_BUTTON = EurekaBlocks.WIRELESS_BUTTONS.toSet() withBE ::WirelessButtonBlockEntity byName "wireless_button"
 

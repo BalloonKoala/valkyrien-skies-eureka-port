@@ -14,6 +14,9 @@ interface Wireable {
     /** Shown as a cannon in the wiring screen, not as a button. */
     val isCannon: Boolean
 
+    /** Shown as a detacher in the wiring screen. */
+    val isDetacher: Boolean get() = false
+
     /** What happens when its key goes down on its contact. */
     fun fireFromKey(level: ServerLevel)
 }

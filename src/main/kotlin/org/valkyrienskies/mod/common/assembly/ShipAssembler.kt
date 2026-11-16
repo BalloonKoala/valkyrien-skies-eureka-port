@@ -165,7 +165,10 @@ object ShipAssembler {
         fromShip: ServerShip?, toShip: ServerShip?,
         minStructurePos: BlockPos, maxStructurePos: BlockPos,
         toCenter: Vector3i,
-        removeOriginal: Boolean = true)
+        removeOriginal: Boolean = true,
+        // Puts the block at anchor.first onto anchor.second, turned by rotation, instead of centering it on toCenter
+        anchor: Pair<BlockPos, BlockPos>? = null,
+        rotation: net.minecraft.world.level.block.Rotation = net.minecraft.world.level.block.Rotation.NONE)
     : MoveContext {
         val blocks = blocks.filter { level.getBlockState(it).let{!it.isAir && !it.inAssemblyBlacklist()} }.toSet()
         if (blocks.isEmpty()) return failedMove
@@ -217,7 +220,11 @@ object ShipAssembler {
             chunksToBeUpdated[sourcePos] = Pair(sourcePos, destPos)
         }
         val chunkPairs = chunksToBeUpdated.values.toList()
-        val chunkPoses = chunkPairs.flatMap { it.toList() }
+        val chunkPoses = if (anchor == null) chunkPairs.flatMap { it.toList() } else {
+            // Turned and put somewhere else, the chunks it lands in don't follow from a plain offset
+            val landing = blocks.map { anchor.second.offset(it.subtract(anchor.first).rotate(rotation)) }.toSet()
+            (getDistinctChunksFromBlockPosSet(blocks) + getDistinctChunksFromBlockPosSet(landing)).distinct()
+        }
         val chunkPosesJOML = chunkPoses.map { it.toJOML() }
 
         level.players().forEach { player ->
@@ -287,7 +294,16 @@ object ShipAssembler {
         structureSettings.rotationPivot = cornerOfShip
 
         VSAssemblyEvents.onPasteBeforeBlocksAreLoaded.emit(VSAssemblyEvents.OnPasteBeforeBlocksAreLoaded(level, fromShip, toShip, Pair(fromCenter, centerOfShip), eventData))
-        template.placeInWorld(level, cornerOfShip, cornerOfShip, structureSettings, level.random, Block.UPDATE_CLIENTS)
+        if (anchor == null) {
+            template.placeInWorld(level, cornerOfShip, cornerOfShip, structureSettings, level.random, Block.UPDATE_CLIENTS)
+        } else {
+            // The template's own positions start at minStructurePos, it turns around the anchor block
+            val pivot = anchor.first.subtract(minStructurePos)
+            structureSettings.rotation = rotation
+            structureSettings.rotationPivot = pivot
+            val position = anchor.second.subtract(pivot)
+            template.placeInWorld(level, position, position, structureSettings, level.random, Block.UPDATE_CLIENTS)
+        }
 
         // ========== Resume Chunk Updates
         val timeAtExecution = level.server.tickCount

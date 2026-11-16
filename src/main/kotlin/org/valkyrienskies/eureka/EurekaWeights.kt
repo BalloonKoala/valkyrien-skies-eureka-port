@@ -23,6 +23,11 @@ object EurekaWeights : BlockStateInfoProvider {
                 )
         }
 
+        if (blockState.block == EurekaBlocks.ELECTRIC_WEIGHT.get()) {
+            return if (blockState.getValue(BlockStateProperties.LIT)) EurekaConfig.SERVER.electricWeightOnMass
+            else EurekaConfig.SERVER.electricWeightOffMass
+        }
+
         return null
     }
 

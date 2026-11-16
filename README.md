@@ -114,10 +114,38 @@ A button you never touch, in all 12 wood types: oak, spruce, birch, jungle, acac
 
 You can't press it by hand and arrows don't press it. It only fires from a key you set, and it sends a 2 tick redstone pulse. It works with anything redstone can do: cannons, doors, lights, bells, traps, you name it.
 
+### 🔓 Detacher
+A dark metal block with a big red circle on one face. It works on a redstone signal or its key from the helm, and it only ever holds other ships, never the ground.
+
+**When it holds nothing, it grabs.** A metal pole shoots out of the red face, up to 5 blocks, like a piston:
+
+- If the pole hits another ship, it pulls that ship in against the red face and it becomes part of your ship. The game then only has one ship to run, which saves memory and CPU
+- A helm on the grabbed ship won't work while it's held
+- If the pole hits nothing, or only the ground, it comes back empty
+- If the other ship wouldn't fit against the red face, the pole comes back without it
+
+**When it holds something, it lets go.** Whatever only hangs on through the red face becomes a ship of its own and gets pushed off the way the red face points. Its helm works again.
+
+- Place it on any side of a block. The red face points away from the block you put it on, so it can face any way
+- If that part is still held on some other way too, nothing happens
+- Crouch and right click it, or right click it with an empty hand, to set how hard it pushes: from half a block to 6 blocks
+- Wire it to a helm or cushion in the Wiring screen, like a cannon. It shows up as a purple dot
+
+Tow a lifeboat home, pick up cargo, drop bombs, or split your ship in two.
+
+### ⚖️ Electric Weight
+A simple block that switches like a copper bulb: every redstone pulse flips it on or off.
+
+- **Off:** it weighs as much as an oak log
+- **On:** it lights up and weighs as much as a block of netherite
+
+Use it as ballast you can switch, to sink a boat lower, trim a ship that leans, or bring an airship down.
+
 ### 🗺️ The Wiring screen
 Open your helm and click the new **Wiring** button. You'll fly around a live 3D view of your ship, like in Blender.
 
 - 🟠 **Orange dots** are your cannons, no buttons needed
+- 🟣 **Purple dots** are your detachers
 - 🔴 **Red dots** are your wireless buttons
 - 🔵 **Blue dots** are your contact points: every helm and cushion on that ship
 - Dots show right through the walls, and lines show what's wired to what
@@ -132,8 +160,8 @@ Open your helm and click the new **Wiring** button. You'll fly around a live 3D 
 | Sprint key | Fly faster |
 | <kbd>Esc</kbd> | Done |
 
-- **Set a key:** click an orange or red dot, then press any key on your keyboard. Do the same to change it. <kbd>Esc</kbd> cancels.
-- **Rewire it:** drag its dot onto a blue dot. Every cannon and button starts out wired to the helm.
+- **Set a key:** click an orange, purple or red dot, then press any key on your keyboard. Do the same to change it. <kbd>Esc</kbd> cancels.
+- **Rewire it:** drag its dot onto a blue dot. Every cannon, detacher and button starts out wired to the helm.
 - Pressing a cannon's key fires it straight away. Mashing the key fires about as fast as redstone would.
 
 **Firing it:** a key only works when all of this is true:
@@ -242,6 +270,16 @@ Medium: a small cannonball in the middle, iron ingots on the sides, gunpowder in
 Large: a medium cannonball in the middle, iron ingots on the sides, TNT in the corners
 
 <img src="docs/images/recipes/large_cannonball.png" alt="Large Cannonball recipe" width="512">
+
+**Detacher**
+
+<img src="docs/images/recipes/detacher.png" alt="Detacher recipe" width="512">
+
+**Electric Weight**
+
+<img src="docs/images/recipes/electric_weight.png" alt="Electric Weight recipe" width="512">
+
+Iron ingots in the corners, redstone on the top and bottom, copper ingots on the sides, a block of iron in the middle
 
 **Wireless Button**
 

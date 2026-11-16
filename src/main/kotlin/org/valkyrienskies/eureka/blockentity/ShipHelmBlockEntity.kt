@@ -62,6 +62,30 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
     fun hasSeat(seat: ShipMountingEntity): Boolean = seat in seats
     private var shouldDisassembleWhenPossible = false
 
+    /** Set while this helm's ship is held by a detacher as part of another ship. It does nothing until let go of. */
+    var heldByDetacher = false
+        set(value) {
+            field = value
+            setChanged()
+        }
+
+    override fun saveAdditional(output: net.minecraft.world.level.storage.ValueOutput) {
+        super.saveAdditional(output)
+        if (heldByDetacher) output.putBoolean(HELD_TAG, true)
+    }
+
+    override fun loadAdditional(input: net.minecraft.world.level.storage.ValueInput) {
+        super.loadAdditional(input)
+        heldByDetacher = input.getBooleanOr(HELD_TAG, false)
+    }
+
+    /** Tells the player and returns true when the helm can't be used because a detacher holds its ship. */
+    fun refuseWhileHeld(player: Player): Boolean {
+        if (!heldByDetacher) return false
+        player.sendOverlayMessage(Component.translatable("info.vs_eureka.helm_held"))
+        return true
+    }
+
     override fun createMenu(id: Int, playerInventory: Inventory, player: Player): AbstractContainerMenu {
         return ShipHelmScreenMenu(id, playerInventory, this)
     }
@@ -227,6 +251,7 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
     }
 
     fun sit(player: Player, force: Boolean = false): Boolean {
+        if (refuseWhileHeld(player)) return false
         // If player is already controlling the ship, open the helm menu
         if (!force && player.vehicle?.type == ValkyrienSkiesMod.SHIP_MOUNTING_ENTITY_TYPE && seats.contains(player.vehicle as ShipMountingEntity)) {
             player.openMenu(this)
@@ -238,5 +263,9 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
         // return player.startRiding(seat, force)
         return startRiding(player, force, blockPos, blockState, level as ServerLevel)
     }
+    private companion object {
+        const val HELD_TAG = "HeldByDetacher"
+    }
+
     private val logger by logger()
 }
