@@ -71,6 +71,8 @@ Ships have a throttle, shown above your XP bar while you drive (**Throttle: 45%*
 
 The throttle took the place of cruise control.
 
+<img src="docs/images/throttle.jpg" alt="A player at the helm of an airship, with Throttle: 75% shown above the XP bar" width="100%">
+
 ### 🧭 Turning takes engines
 A ship with no engine running doesn't turn at all. Every running engine turns it a bit faster, and a heavier ship gets less out of each engine, up to 90° a second:
 
@@ -124,6 +126,8 @@ A dark metal block with a big red circle on one face. It works on a redstone sig
 - If the pole hits nothing, or only the ground, it comes back empty
 - If the other ship wouldn't fit against the red face, the pole comes back without it
 
+<img src="docs/images/detacher-grab.jpg" alt="A Detacher on the side of an airship with its metal pole reaching out to grab a small lifeboat" width="100%">
+
 **When it holds something, it lets go.** Whatever only hangs on through the red face becomes a ship of its own and gets pushed off the way the red face points. Its helm works again.
 
 - Place it on any side of a block. The red face points away from the block you put it on, so it can face any way
@@ -141,8 +145,12 @@ A simple block that switches like a copper bulb: every redstone pulse flips it o
 
 Use it as ballast you can switch, to sink a boat lower, trim a ship that leans, or bring an airship down.
 
+<img src="docs/images/electric-weight.jpg" alt="A Detacher with its red face, an Electric Weight switched off, and an Electric Weight switched on and glowing" width="100%">
+
 ### 🗺️ The Wiring screen
 Open your helm and click the new **Wiring** button. You'll fly around a live 3D view of your ship, like in Blender.
+
+<img src="docs/images/wiring.jpg" alt="The Wiring screen over an airship: orange dots on two cannons, a purple dot on a Detacher and a blue dot on the helm, with lines showing what's wired to what" width="100%">
 
 - 🟠 **Orange dots** are your cannons, no buttons needed
 - 🟣 **Purple dots** are your detachers
@@ -178,6 +186,8 @@ Pressing **Assemble** on a helm doesn't build the ship straight away anymore. Yo
 - How many blocks will become the ship, and how big it is
 - A 3D view of **only** those blocks. Drag to turn it, scroll to zoom
 - If your boat is touching a dock, the ground or anything else, you'll see it right there
+
+<img src="docs/images/ship-info.png" alt="The Ship Info screen: a 3D view of an airship, 199 blocks will become the ship, 13 wide, 5 high, 11 long, with Assemble and Cancel buttons" width="100%">
 
 Press **Assemble** under the info to build the ship, or **Cancel** to go fix it. If it's touching the ground or something huge, the count turns red and Assemble is greyed out.
 
@@ -244,12 +254,12 @@ Everyone gets a quick hello with the credits and a Discord link when they join.
 
 ## 🧱 Every block
 
-<img src="docs/images/all-blocks.png" alt="Every block in the mod: 12 wireless buttons, 8 ship helms, anchor, engine, cannon, ballast, floater and 17 balloons" width="100%">
+<img src="docs/images/all-blocks.png" alt="Every block in the mod: 12 wireless buttons, 8 ship helms, anchor, engine, two cannons, detacher, electric weight off and on, ballast, floater and 17 balloons" width="100%">
 
 <a id="recipes"></a>
 ## 🛠️ Recipes
 
-**All 32 original Eureka recipes are exactly the same as before.** If you know how to craft it in Eureka, you already know how to craft it here. The only additions are the Cannon, the Cannonballs and the Wireless Buttons. JEI shows every recipe in game.
+**All 32 original Eureka recipes are exactly the same as before.** If you know how to craft it in Eureka, you already know how to craft it here. The only additions are the Cannon, the Cannonballs, the Detacher, the Electric Weight and the Wireless Buttons. JEI shows every recipe in game.
 
 ### New recipes
 
