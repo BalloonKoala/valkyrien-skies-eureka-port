@@ -22,6 +22,13 @@ This project is a modified version of **Valkyrien Skies 2.4.11** and **VS Eureka
 - Block entities on ships, like helm wheels, cannons, chests and signs, are drawn when Entity Culling is installed
 - Ships stop turning when the steering key is let go, also at high speed
 - Physics only gets the terrain near ships, so worlds with few or no ships take far less work, and checks that ran for every entity or every frame skip themselves when there are no ships
+- A ship loads and is sent to a player as a whole once any part of it is near them. Before, the far end of a ship longer than about 256 blocks never loaded, and the whole ship stayed frozen in the air
+- The ground and water under and around every ship stay loaded for its physics, also under the far end of a long ship where no player is near, so it can't sink into hills or lose its water there
+- Physics gets the terrain of every loaded chunk near a ship, not only the ticking ones within the simulation distance
+- The server only looks at the chunks physics needs each tick, instead of every loaded chunk
+- Big ships with a helm (over about 2000 blocks) skip VS's air drag that went over every block every physics step, which took most of the physics thread and made big ships and the people on them stutter
+- Engines on big boats get their push from how much of the hull is in water, measured under the ship. VS said almost none for a big boat, so its engines hardly pushed
+- Rails, and other blocks a player placed that the helm otherwise leaves behind (stone, dirt, gravel and the like), come along when a ship is assembled. Before, rails on those blocks broke off. A rail on a block that does stay behind stays behind with it
 
 ## New features
 - Cushions work on ships, and a cushion in front of a helm is a driver's seat
@@ -34,7 +41,10 @@ This project is a modified version of **Valkyrien Skies 2.4.11** and **VS Eureka
 - Ship Info screen before assembling, with the block count and a 3D view of what would become the ship
 - Blocks players place are remembered per chunk, and only those can become a ship, through the helm or VS's assembler items
 - `/vs build unassemble` and `/vs build delete`, for all ships or the ones within a distance
-- Engine speed depends on the number of engines, the mass and the length of the ship, with new settings for it
+- Engine speed depends on the number of engines and the mass of the ship: every ship can reach the same top speed, heavier ones need more engines for it
+- How fast the far end of a turning ship can swing round is limited, so long ships turn slower and nobody near the ends gets flung around
+- Turning takes running engines: none means no turning, every engine turns a ship faster, a heavier ship less per engine, up to `maxTurnDegrees`. Ships get up to their turning speed and stop again in about half a second, and only lean a little into a turn
+- Throttle: W raises it, S lowers it to 0, waits there 0.2 seconds and then goes into reverse. It stays where it is when the keys are let go, also with nobody at the helm, and it's shown above the XP bar of whoever drives. It replaces cruise control
 - Ships hold themselves level harder at high speed
 - Wireless Buttons in 12 wood types
 - Wiring screen in the helm, with key binds and contact points
@@ -44,3 +54,6 @@ This project is a modified version of **Valkyrien Skies 2.4.11** and **VS Eureka
 ## Removed
 - The warning about known issues when joining, and its config option
 - The engine settings `engineBoost`, `engineBoostOffset`, `engineBoostExponentialPower` and `maxSpeedFromEngines`, replaced by the new speed settings
+- The settings `smallShipTopSpeed`, `smallShipLength`, `hugeShipTopSpeed` and `hugeShipLength`, replaced by one `maxShipSpeed` for every ship
+- The settings `turnSpeed`, `enginePowerAngular` and `enginePowerAngularMin`, replaced by `turnDegreesPerEngine` and `maxTurnDegrees`
+- Cruise control, the throttle does its job

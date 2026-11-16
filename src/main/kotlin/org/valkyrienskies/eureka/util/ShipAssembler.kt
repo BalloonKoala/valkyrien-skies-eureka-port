@@ -1,5 +1,7 @@
 package org.valkyrienskies.eureka.util
 
+import net.minecraft.world.level.block.BaseRailBlock
+import net.minecraft.world.level.block.state.properties.RailShape
 import com.google.common.collect.Sets
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
 import net.minecraft.core.BlockPos
@@ -53,10 +55,29 @@ object ShipAssembler {
         val blocks = mutableListOf<BlockPos>()
         blocks.add(center)
         val worldGenerated = HashSet<BlockPos>()
-        val complete = bfs(level, center, blocks, predicate, limit, false) { pos, state ->
-            PlacedBlocks.isWorldGenerated(level, pos, state).also { if (it) worldGenerated.add(pos.immutable()) }
+        val complete = bfs(
+            level, center, blocks, predicate, limit, false,
+            stopAt = { pos, state -> PlacedBlocks.isWorldGenerated(level, pos, state).also { if (it) worldGenerated.add(pos.immutable()) } },
+            // Stone, dirt and the like stay out so a ship never takes the ground, unless a player placed them
+            alsoTake = { pos, state -> !state.isAir && PlacedBlocks.isPlaced(level, pos) }
+        )
+        val taken = blocks.toHashSet()
+        // A rail resting on a block that stays behind stays behind with it, on the ship it would break off
+        blocks.removeAll { pos ->
+            val state = level.getBlockState(pos)
+            val rail = state.block as? BaseRailBlock ?: return@removeAll false
+            railSupports(pos, state.getValue(rail.shapeProperty)).any { it !in taken }
         }
         return FoundBlocks(blocks.toSet(), worldGenerated, complete)
+    }
+
+    // The block a rail sits on, and on a slope the block it leans on
+    private fun railSupports(pos: BlockPos, shape: RailShape): List<BlockPos> = when (shape) {
+        RailShape.ASCENDING_EAST -> listOf(pos.below(), pos.east())
+        RailShape.ASCENDING_WEST -> listOf(pos.below(), pos.west())
+        RailShape.ASCENDING_NORTH -> listOf(pos.below(), pos.north())
+        RailShape.ASCENDING_SOUTH -> listOf(pos.below(), pos.south())
+        else -> listOf(pos.below())
     }
 
     private fun roundToNearestMultipleOf(number: Double, multiple: Double) = multiple * round(number / multiple)
@@ -211,7 +232,8 @@ object ShipAssembler {
         predicate: (BlockState) -> Boolean,
         limit: Int = EurekaConfig.SERVER.maxShipBlocks,
         log: Boolean = true,
-        stopAt: ((BlockPos, BlockState) -> Boolean)? = null
+        stopAt: ((BlockPos, BlockState) -> Boolean)? = null,
+        alsoTake: ((BlockPos, BlockState) -> Boolean)? = null
     ): Boolean {
 
         val blacklist = DenseBlockPosSet()
@@ -223,7 +245,7 @@ object ShipAssembler {
             val pos = stack.pop()
 
             val state = level.getBlockState(pos)
-            if (predicate(state)) {
+            if (predicate(state) || alsoTake?.invoke(pos, state) == true) {
                 // Noted down, but not part of the ship and not searched past
                 if (stopAt != null && stopAt(pos, state)) continue
                 blocks.add(BlockPos(pos.x, pos.y, pos.z))

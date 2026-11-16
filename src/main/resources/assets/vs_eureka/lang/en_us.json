@@ -40,6 +40,7 @@
   "gui.vs_eureka.aligning": "Aligning...",
   "hud.vs_eureka.start_cruising": "Cruise control enabled",
   "hud.vs_eureka.stop_cruising": "Cruise control disabled",
+  "hud.vs_eureka.throttle": "Throttle: %s%%",
   "hud.vs_eureka.engines_paused": "All engines on this ship paused",
   "hud.vs_eureka.engines_resumed": "All engines on this ship resumed",
   "info.vs_eureka.too_big": "Ship is too big! Max size is %s blocks (changeable in the config)",

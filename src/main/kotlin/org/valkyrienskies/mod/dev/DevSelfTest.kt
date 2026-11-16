@@ -46,6 +46,12 @@ import org.joml.Vector3d
 /** Development only, never shipped: exercises real ships on a running server and logs what happened. */
 object DevSelfTest {
     var ticks = 0
+
+    // VS_TEST_MOTION_SIZE=15x300 makes the motion test deck that wide and long, with everything on it near the front end
+    private val motionSize = (System.getenv("VS_TEST_MOTION_SIZE") ?: "13x13").split("x").map(String::toInt)
+    private val motionWidth = motionSize[0]
+    private val motionLength = motionSize[1]
+    private val motionFar = if (motionLength > 40) -(motionLength / 2 - 8).toDouble() else 0.0
     var baseY = 100
 
     @JvmField
@@ -150,7 +156,8 @@ object DevSelfTest {
             if (server.playerList.players.size < (System.getenv("VS_TEST_PLAYERS") ?: "1").toInt()) return
             joinStart = ticks
             baseY = 150
-            for (x in -6..6) for (z in -6..6) level.setChunkForced(x, z, true)
+            val chunks = maxOf(6, motionLength / 32 + 4)
+            for (x in -chunks..chunks) for (z in -chunks..chunks) level.setChunkForced(x, z, true)
             for (p in server.playerList.players) {
                 p.setGameMode(GameType.CREATIVE)
                 p.abilities.flying = true
@@ -182,15 +189,15 @@ object DevSelfTest {
                 return
             }
         }
-        if ((System.getenv("VS_TEST_STANCE") != null || System.getenv("VS_TEST_DECK") != null || System.getenv("VS_TEST_FEATURES") != null) && t > 110) return
+        if ((System.getenv("VS_TEST_STANCE") != null || System.getenv("VS_TEST_DECK") != null || System.getenv("VS_TEST_FEATURES") != null ||
+                System.getenv("VS_TEST_THROTTLE") != null) && t > 110) return
         when (t) {
             40 -> {
                 val testSpeed = (System.getenv("VS_TEST_SPEED") ?: "12").toDouble()
-                EurekaConfig.SERVER.smallShipTopSpeed = testSpeed
-                EurekaConfig.SERVER.hugeShipTopSpeed = testSpeed
+                EurekaConfig.SERVER.maxShipSpeed = testSpeed
                 EurekaConfig.SERVER.engineSpeedPerEngine = 10000.0
                 EurekaConfig.SERVER.enginePowerLinear = 50000000f
-                for (x in -6..6) for (z in -6..6) {
+                for (x in -motionWidth / 2..motionWidth / 2) for (z in -motionLength / 2..motionLength / 2) {
                     level.setBlock(BlockPos(x, y, z), Blocks.OAK_PLANKS.defaultBlockState(), 3)
                     level.setBlock(BlockPos(x, y - 1, z), block("vs_eureka:balloon").defaultBlockState(), 3)
                 }
@@ -223,7 +230,7 @@ object DevSelfTest {
             100 -> {
                 val deck = level.shipObjectWorld.allShips.getById(cruiser!!.id)!!.transform.positionInWorld
                 val still = EntityTypes.COW.create(level, EntitySpawnReason.COMMAND)!!
-                still.setPos(deck.x() + 1.0, y + 1.1, deck.z() - 2.0)
+                still.setPos(deck.x() + 1.0, y + 1.1, deck.z() - 2.0 + motionFar)
                 still.getAttribute(Attributes.MOVEMENT_SPEED)!!.baseValue = 0.0
                 still.customName = Component.literal("still")
                 level.addFreshEntity(still)
@@ -231,13 +238,13 @@ object DevSelfTest {
                 penned.setPos(deck.x() - 3.0, y + 1.1, deck.z() - 3.0)
                 penned.customName = Component.literal("penned")
                 level.addFreshEntity(penned)
-                val item = net.minecraft.world.entity.item.ItemEntity(level, deck.x() + 3.0, y + 1.1, deck.z() - 2.0, ItemStack(Items.DIAMOND))
+                val item = net.minecraft.world.entity.item.ItemEntity(level, deck.x() + 3.0, y + 1.1, deck.z() - 2.0 + motionFar, ItemStack(Items.DIAMOND))
                 item.setNeverPickUp()
                 item.setUnlimitedLifetime()
                 item.customName = Component.literal("item")
                 level.addFreshEntity(item)
                 val noAi = EntityTypes.COW.create(level, EntitySpawnReason.COMMAND)!!
-                noAi.setPos(deck.x() + 3.0, y + 1.1, deck.z() - 4.0)
+                noAi.setPos(deck.x() + 3.0, y + 1.1, deck.z() - 4.0 + motionFar)
                 noAi.setNoAi(true)
                 noAi.customName = Component.literal("noai")
                 level.addFreshEntity(noAi)
@@ -246,9 +253,9 @@ object DevSelfTest {
                     p.abilities.flying = false
                     p.onUpdateAbilities()
                     if (i == 0) {
-                        p.teleportTo(level, deck.x(), y + 1.1, deck.z() + 4.0, setOf(), 180f, 12f, true)
+                        p.teleportTo(level, deck.x(), y + 1.1, deck.z() + 4.0 + motionFar, setOf(), 180f, 12f, true)
                     } else {
-                        p.teleportTo(level, deck.x() + i, y + 1.1, deck.z() - 5.0, setOf(), 0f, 12f, true)
+                        p.teleportTo(level, deck.x() + i, y + 1.1, deck.z() - 5.0 + motionFar, setOf(), 0f, 12f, true)
                     }
                 }
             }
@@ -267,6 +274,8 @@ object DevSelfTest {
             }
             760 -> {
                 drive(level) { forwardImpulse = 0f; sprintOn = false }
+                // The throttle stays where it is when W is let go
+                level.shipObjectWorld.loadedShips.getById(cruiser!!.id)?.getAttachment(EurekaShipControl::class.java)?.throttle = 0.0
                 log("motion phase stopping")
             }
             860 -> {
@@ -277,7 +286,7 @@ object DevSelfTest {
         }
         if (t >= 100 && t % 50 == 0) {
             val ship = level.shipObjectWorld.allShips.getById(cruiser!!.id) ?: return
-            log("motion t=$t speed=${"%.2f".format(ship.velocity.length())} pos=${ship.transform.positionInWorld}")
+            log("motion t=$t speed=${"%.2f".format(ship.velocity.length())} pos=${ship.transform.positionInWorld} mspt=${"%.1f".format(server.currentSmoothedTickTime)} physics tps=${"%.0f".format(server.vsPipeline.computePhysTps())}")
             for (e in onDeck + server.playerList.players) {
                 val p = ship.transform.worldToShip.transformPosition(Vector3d(e.x, e.y, e.z)).sub(ship.transform.positionInShip)
                 val drag = (e as IEntityDraggingInformationProvider).draggingInformation

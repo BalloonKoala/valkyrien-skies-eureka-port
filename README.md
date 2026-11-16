@@ -62,6 +62,28 @@ Nothing on deck glitches anymore. Tested on a 36 m/s ship with 120 ms of ping:
 ### ☸️ A proper captain's wheel
 You stand on the deck with both hands on the wheel, not floating above it, and your mouse is no longer reversed while steering. Crouch and right click opens the helm even with something in your hands. Let go of left or right and the ship stops turning.
 
+### 🎚️ Throttle
+Ships have a throttle, shown above your XP bar while you drive (**Throttle: 45%**):
+
+- Hold <kbd>W</kbd> and it goes up, about 50% a second
+- Let go and it stays where it is. Step off the helm and the ship keeps going at that throttle
+- Hold <kbd>S</kbd> and it comes down to 0%, waits there a moment, then goes into reverse
+
+The throttle took the place of cruise control.
+
+### 🧭 Turning takes engines
+A ship with no engine running doesn't turn at all. Every running engine turns it a bit faster, and a heavier ship gets less out of each engine, up to 90° a second:
+
+| Ship | Engines | Turning |
+|---|---|---|
+| Tiny, 3×3 | 1 | about 15° a second |
+| Tiny, 3×3 | 10 | about 65° a second |
+| Medium, 7×40 | 10 | about 22° a second |
+| Medium, 7×40 | 40 | about 55° a second |
+| Huge, 15×300 | 150 | about 8° a second |
+
+Long ships turn slower, so their far end never swings round faster than 30 blocks a second. Ships lean into a turn just a little, and no longer rock about.
+
 ### 🛋️ Cushions on ships
 Cushions work properly on ships now. Sit on them, break them, and use them as seats anywhere on deck.
 
@@ -138,6 +160,7 @@ The game remembers every block players place. A ship can only be made of those, 
 - Break the red blocks and try again
 - VS's creative Ship Assembler and Area Assembler tools follow the same rule
 - Ships you take apart count as yours, so you can assemble them again
+- Stone, dirt, gravel and the like normally stay behind so a ship never takes the ground, but the ones you placed come along, and so do rails sitting on them
 
 In chunks from before this update the game can't tell who placed what, so there it only stops blocks nobody builds boats from, like ores and spawners.
 
@@ -154,17 +177,25 @@ For operators, the same as `/vs delete`:
 Any number works in place of 50.
 
 ### 🚀 Engines that scale with your ship
-Every engine makes you faster, and heavier ships get less out of each one. Longer ships also have a lower top speed:
+Every engine makes you faster, and heavier ships get less out of each one. Every ship can reach the same top speed of 100 blocks/s, a big one just needs a lot more engines for it:
 
-| Longest side | Top speed |
-|---|---|
-| 8 blocks or less | 100 blocks/s |
-| 16 | 76 |
-| 40 | 53 |
-| 150 | 32 |
-| 500 or more | 20 |
+| Ship | Engines | Speed |
+|---|---|---|
+| Tiny, 3×3 | 1 | 25 blocks/s |
+| Tiny, 3×3 | 10 | 83 blocks/s |
+| Huge, 15×300 | 40 | 28 blocks/s and still speeding up |
+| Huge, 15×300 | 150 | 75 blocks/s |
+| Huge, 15×300 | 400 | 97 blocks/s |
 
-A tiny ship with 1 engine does about 24 blocks/s and about 80 with 10 engines. A big ship needs a lot of engines to get anywhere near its top speed. Ships also hold themselves level harder when they go fast, so small fast ships don't tip over. Every number here is a setting in `vs_eureka.toml`.
+Heavy ships also take longer to get up to speed. Ships hold themselves level harder when they go fast, so small fast ships don't tip over. Every number here is a setting in `vs_eureka.toml`.
+
+### 🐋 Huge ships
+Ships hundreds of blocks long work, in the air and on water:
+
+- A ship loads as a whole as soon as any part of it is near a player. Before, a ship longer than about 256 blocks stayed frozen in the air
+- The ground and water under the whole ship stay loaded, even under the far end where no player is near
+- Big ships skip a block by block air drag calculation, which made the physics fall behind and the people on board stutter
+- Engines on big boats push properly in water
 
 ### 🪂 Take off with an elytra
 Jump off your ship and press jump again to glide, from a ship standing still or one flying at full speed. You keep the ship's speed when you leave it.

@@ -41,11 +41,7 @@ object EurekaConfig {
         @ConfigEntry(description = "Movement power per engine with minimal heat")
         var enginePowerLinearMin: Float = 10000f
 
-        @ConfigEntry(description = "Turning power per engine when heated fully")
-        var enginePowerAngular = 1.0f
 
-        @ConfigEntry(description = "Turning power per engine when minimal heat")
-        var enginePowerAngularMin = 0.0f
 
         @ConfigEntry(description = "The amount of heat a engine loses per tick")
         var engineHeatLoss = 0.01f
@@ -80,17 +76,14 @@ object EurekaConfig {
         @ConfigEntry(description = "How much a heavier ship slows down each engine. Each engine adds (engineReferenceMass / mass) ^ this. 1 = in proportion to mass, 0 = mass doesn't matter")
         var engineMassExponent = 0.6
 
-        @ConfigEntry(description = "Top speed in blocks per second of a small ship, one no longer than smallShipLength")
-        var smallShipTopSpeed = 100.0
+        @ConfigEntry(description = "Top speed in blocks per second of any ship. Heavier ships get less out of each engine, so they need more engines to get near it")
+        var maxShipSpeed = 100.0
 
-        @ConfigEntry(description = "Longest side in blocks of a small ship")
-        var smallShipLength = 8.0
+        @ConfigEntry(description = "Fastest the far end of a turning ship moves, in blocks per second. Long ships turn slower, so people near the ends don't get flung around")
+        var maxTurnEdgeSpeed = 30.0
 
-        @ConfigEntry(description = "Top speed in blocks per second of a huge ship, one at least hugeShipLength long. Ships in between get a top speed in between")
-        var hugeShipTopSpeed = 20.0
-
-        @ConfigEntry(description = "Longest side in blocks of a huge ship")
-        var hugeShipLength = 500.0
+        @ConfigEntry(description = "Ships with a helm heavier than this many kg (about 2000 blocks) skip Valkyrien Skies' block by block air drag, which costs a lot on big ships. Steering and levelling still slow them down")
+        var noBlockDragAboveMass = 1000000.0
 
         @ConfigEntry(description = "Ships get less steady as they speed up to this many blocks per second, and hold themselves level harder past it, so fast ships don't tip over")
         var stableSpeed = 15.0
@@ -152,10 +145,13 @@ object EurekaConfig {
         var massPerBalloon = 5000.0
 
         // The amount of speed that the ship can move at when the left/right impulse button is held down.
-        @ConfigEntry(description = "The maximum linear velocity at any point on the ship caused by helm torque")
-        var turnSpeed = 3.0
+        @ConfigEntry(description = "Degrees per second one fully heated engine turns a ship that weighs engineReferenceMass. Heavier ships turn less per engine, and a ship with no engine running doesn't turn")
+        var turnDegreesPerEngine = 24.0
 
-        @ConfigEntry(description = "The maximum linear acceleration at any point on the ship caused by helm torque")
+        @ConfigEntry(description = "Fastest any ship turns, in degrees per second, however many engines it has")
+        var maxTurnDegrees = 90.0
+
+        @ConfigEntry(description = "The maximum linear acceleration at any point on the ship when it stops turning")
         var turnAcceleration = 10.0
 
         @ConfigEntry(

@@ -89,6 +89,8 @@ class ValkyrienSkiesModFabric : ModInitializer {
     override fun onInitialize() {
         if (hasInitialized.getAndSet(true)) return
 
+        org.valkyrienskies.mod.common.world.ShipTerrainTickets.register()
+
         ConfigRegistry.INSTANCE.apply {
             register(ValkyrienSkiesMod.MOD_ID, ModConfig.Type.SERVER, VSConfigUpdater.CORE_SERVER_SPEC, "valkyrienskies/vs-core-server.toml")
             register(ValkyrienSkiesMod.MOD_ID, ModConfig.Type.SERVER, VSConfigUpdater.SERVER_SPEC, "valkyrienskies/valkyrienskies-server.toml")

@@ -118,12 +118,6 @@ class EngineBlockEntity(pos: BlockPos, state: BlockState) :
                     effectiveHeat,
                 )
 
-                eurekaShipControl.powerAngular += lerp(
-                    EurekaConfig.SERVER.enginePowerAngularMin,
-                    EurekaConfig.SERVER.enginePowerAngular,
-                    effectiveHeat,
-                )
-
                 heat -= eurekaShipControl.consumed
             }
 

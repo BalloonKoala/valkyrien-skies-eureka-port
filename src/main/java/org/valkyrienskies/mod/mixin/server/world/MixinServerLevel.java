@@ -1,5 +1,9 @@
 package org.valkyrienskies.mod.mixin.server.world;
 
+import org.valkyrienskies.mod.common.world.ShipTerrainTickets;
+import org.valkyrienskies.core.api.ships.ServerShip;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongIterator;
 import static org.valkyrienskies.mod.common.ValkyrienSkiesMod.getVsCore;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -251,15 +255,26 @@ public abstract class MixinServerLevel implements IShipObjectWorldServerProvider
 
         // Physics only needs the terrain around ships. Turning every loaded chunk into physics terrain cost a lot of
         // time and memory even in worlds without a single ship.
-        final List<int[]> shipAreas = vs$shipTerrainAreas(shipObjectWorld, VSGameUtilsKt.getDimensionId(self));
+        final String dimension = VSGameUtilsKt.getDimensionId(self);
+        final List<int[]> shipAreas = vs$shipTerrainAreas(shipObjectWorld, dimension);
+        // Only the chunks physics needs get looked at, not every loaded chunk, which on a server with players spread
+        // out is thousands of chunks every tick
+        final LongOpenHashSet needed = vs$chunksNeededByPhysics(shipObjectWorld, dimension, shipAreas);
+        ShipTerrainTickets.tick(self, shipObjectWorld, dimension);
 
-        for (final ChunkHolder chunkHolder : shipAreas.isEmpty() ? List.<ChunkHolder>of() : chunkMapAccessor.getVisibleChunkMap().values()) {
-            final ChunkPos holderPos = chunkHolder.getPos();
-            if (!vs$neededByPhysics(self, holderPos.x(), holderPos.z(), shipAreas)) continue;
+        final LongIterator neededIterator = needed.iterator();
+        while (neededIterator.hasNext()) {
+            final long key = neededIterator.nextLong();
+            final ChunkPos holderPos = ChunkPos.unpack(key);
+            if (vs$knownChunks.containsKey(holderPos)) continue;
+            final ChunkHolder chunkHolder = chunkMapAccessor.callGetVisibleChunkIfPresent(key);
+            if (chunkHolder == null) continue;
             // Only load chunks that haven't been loaded before, and have a ticket
-            if (!vs$knownChunks.containsKey(holderPos) && !distanceManagerAccessor.getTicketStorage().getTickets(holderPos.pack()).isEmpty()) {
+            if (!distanceManagerAccessor.getTicketStorage().getTickets(key).isEmpty()) {
+                // Loaded is enough, physics only needs the blocks. Chunks further from players than the simulation
+                // distance never tick, and those are often under the far end of a long ship.
                 final ChunkResult<LevelChunk> worldChunkResult =
-                    chunkHolder.getTickingChunkFuture().getNow(ChunkHolder.UNLOADED_LEVEL_CHUNK);
+                    chunkHolder.getFullChunkFuture().getNow(ChunkHolder.UNLOADED_LEVEL_CHUNK);
                 if (worldChunkResult.isSuccess()) {
                     // Only load chunks that have a ticket
                     final LevelChunk worldChunk = worldChunkResult.orElse(null);
@@ -274,7 +289,7 @@ public abstract class MixinServerLevel implements IShipObjectWorldServerProvider
             final long chunkPos = knownChunkPosEntry.getKey().pack();
             // Unload chunks if they don't have tickets, if they're not in the visible chunks, or no ship is near anymore
             final ChunkPos knownPos = knownChunkPosEntry.getKey();
-            if (!vs$neededByPhysics(self, knownPos.x(), knownPos.z(), shipAreas)
+            if (!needed.contains(chunkPos)
                 || distanceManagerAccessor.getTicketStorage().getTickets(chunkPos).isEmpty()
                 || chunkMapAccessor.callGetVisibleChunkIfPresent(chunkPos) == null) {
                 final long ticksWaitingToUnload = vs$chunksToUnload.getOrDefault(chunkPos, 0L);
@@ -334,14 +349,25 @@ public abstract class MixinServerLevel implements IShipObjectWorldServerProvider
         return areas;
     }
 
-    /** Ship chunks always go to physics, world chunks only near a ship. */
+    /**
+     * Every chunk physics needs in this dimension: the chunks of every ship, and the terrain near ships. Nothing while
+     * no ship is loaded at all.
+     */
     @Unique
-    private static boolean vs$neededByPhysics(final ServerLevel level, final int chunkX, final int chunkZ, final List<int[]> areas) {
-        if (VSGameUtilsKt.isChunkInShipyard(level, chunkX, chunkZ)) return true;
+    private static LongOpenHashSet vs$chunksNeededByPhysics(final VsiServerShipWorld shipWorld, final String dimension,
+        final List<int[]> areas) {
+        final LongOpenHashSet needed = new LongOpenHashSet();
+        if (shipWorld.getLoadedShips().isEmpty()) return needed;
         for (final int[] area : areas) {
-            if (chunkX >= area[0] && chunkZ >= area[1] && chunkX <= area[2] && chunkZ <= area[3]) return true;
+            for (int x = area[0]; x <= area[2]; x++) {
+                for (int z = area[1]; z <= area[3]; z++) needed.add(ChunkPos.pack(x, z));
+            }
         }
-        return false;
+        for (final ServerShip ship : shipWorld.getAllShips()) {
+            if (!dimension.equals(ship.getChunkClaimDimension())) continue;
+            ship.getActiveChunksSet().forEach((x, z) -> needed.add(ChunkPos.pack(x, z)));
+        }
+        return needed;
     }
 
     @Override

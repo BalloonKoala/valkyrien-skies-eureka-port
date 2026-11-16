@@ -1174,6 +1174,14 @@ class DevClientTest : FabricClientGameTest {
             DevFeatureTest.speedTest(context)
             return
         }
+        if (System.getenv("VS_TEST_THROTTLE") != null) {
+            DevFeatureTest.throttleTest(context)
+            return
+        }
+        if (System.getenv("VS_TEST_RAILS") != null) {
+            DevFeatureTest.railTest(context)
+            return
+        }
         if (System.getenv("VS_TEST_GROUND") != null) {
             DevFeatureTest.groundTest(context)
             return

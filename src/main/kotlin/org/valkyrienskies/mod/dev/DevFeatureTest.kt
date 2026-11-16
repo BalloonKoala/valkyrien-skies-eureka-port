@@ -28,6 +28,7 @@ import org.valkyrienskies.eureka.entity.Cannonball
 import org.valkyrienskies.eureka.util.ShipAssembler
 import org.valkyrienskies.mod.api.SeatedControllingPlayer
 import org.valkyrienskies.mod.common.shipObjectWorld
+import org.valkyrienskies.mod.common.vsPipeline
 import org.valkyrienskies.mod.common.util.IEntityDraggingInformationProvider
 import kotlin.math.hypot
 
@@ -256,6 +257,7 @@ object DevFeatureTest {
             server.runOnServer<RuntimeException> { s ->
                 val ship = ship(s.overworld()) as LoadedServerShip
                 ship.getAttachment(SeatedControllingPlayer::class.java)?.forwardImpulse = 0f
+                ship.getAttachment(org.valkyrienskies.eureka.ship.EurekaShipControl::class.java)?.throttle = 0.0
                 val p = s.playerList.players[0]
                 p.stopFallFlying()
                 p.setGameMode(GameType.CREATIVE)
@@ -838,6 +840,199 @@ object DevFeatureTest {
         log("ground test finished")
     }
 
+    /** Rails of every kind on a boat have to come along whole when it's assembled, nothing may pop off. */
+    fun railTest(context: ClientGameTestContext) {
+        context.worldBuilder().create().use { world ->
+            val server = world.server
+            context.waitTicks(20)
+            val before = HashMap<BlockPos, String>()
+            var helm = BlockPos.ZERO
+            val origin = BlockPos(0, -40, 0)
+            server.runOnServer<RuntimeException> { s ->
+                val level = s.overworld()
+                val p = s.playerList.players[0]
+                p.teleportTo(level, origin.x + 5.5, origin.y + 3.0, origin.z + 18.5, setOf(), 180f, 30f, true)
+                helm = buildRailBoat(level, origin)
+                for (pos in BlockPos.betweenClosed(origin.offset(-2, -3, -2), origin.offset(13, 6, 17))) {
+                    val state = level.getBlockState(pos)
+                    if (state.`is`(net.minecraft.tags.BlockTags.RAILS)) before[pos.subtract(helm)] = state.toString()
+                }
+                log("rails before ${before.size}")
+            }
+            context.waitTicks(10)
+            server.runOnServer<RuntimeException> { s ->
+                val level = s.overworld()
+                (level.getBlockEntity(helm) as org.valkyrienskies.eureka.blockentity.ShipHelmBlockEntity).assemble(s.playerList.players[0])
+            }
+            context.waitTicks(60)
+            server.runOnServer<RuntimeException> { s ->
+                val level = s.overworld()
+                val ship = level.shipObjectWorld.loadedShips.firstOrNull()
+                if (ship == null) {
+                    log("rails result NO SHIP")
+                    return@runOnServer
+                }
+                val box = ship.shipAABB!!
+                var shipHelm: BlockPos? = null
+                val after = HashMap<BlockPos, String>()
+                val found = ArrayList<Pair<BlockPos, String>>()
+                for (pos in BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
+                    val state = level.getBlockState(pos)
+                    if (state.block is org.valkyrienskies.eureka.block.ShipHelmBlock) shipHelm = pos.immutable()
+                    if (state.`is`(net.minecraft.tags.BlockTags.RAILS)) found.add(pos.immutable() to state.toString())
+                }
+                for ((pos, state) in found) after[pos.subtract(shipHelm!!)] = state
+                val missing = before.keys.filter { it !in after }.sortedBy { it.toShortString() }
+                val changed = before.keys.filter { it in after && after[it] != before[it] }
+                fun drops(area: net.minecraft.world.phys.AABB) = level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity::class.java, area)
+                    .filter { it.item.`is`(net.minecraft.tags.ItemTags.RAILS) }.sumOf { it.item.count }
+                val worldDrops = drops(net.minecraft.world.phys.AABB(origin).inflate(20.0))
+                val shipDrops = drops(net.minecraft.world.phys.AABB(box.minX() - 3.0, box.minY() - 3.0, box.minZ() - 3.0, box.maxX() + 4.0, box.maxY() + 4.0, box.maxZ() + 4.0))
+                val leftInWorld = BlockPos.betweenClosed(origin.offset(-2, -3, -2), origin.offset(13, 6, 17)).count { level.getBlockState(it).`is`(net.minecraft.tags.BlockTags.RAILS) }
+                log("rails after ${after.size} of ${before.size}, left in world $leftInWorld, dropped as items: world $worldDrops ship $shipDrops")
+                for (m in missing) log("rails missing at ${m.toShortString()} was ${before[m]}")
+                for (c in changed) log("rails changed at ${c.toShortString()} ${before[c]} -> ${after[c]}")
+                log("rails result ${if (missing.isEmpty() && worldDrops + shipDrops == 0 && leftInWorld == 0) "ALL RAILS CAME ALONG" else "RAILS BROKE"}")
+            }
+        }
+        log("rail test finished")
+    }
+
+    private fun buildRailBoat(level: ServerLevel, origin: BlockPos): BlockPos {
+        fun put(x: Int, y: Int, z: Int, state: net.minecraft.world.level.block.state.BlockState) {
+            val pos = origin.offset(x, y, z)
+            level.setBlock(pos, state, 3)
+            org.valkyrienskies.mod.common.PlacedBlocks.markPlaced(level, pos)
+        }
+        val planks = Blocks.SPRUCE_PLANKS.defaultBlockState()
+        val rail = Blocks.RAIL.defaultBlockState()
+        for (x in 0 until 11) for (z in 0 until 16) put(x, 0, z, planks)
+        put(5, -1, 7, block("vs_eureka:balloon").defaultBlockState())
+        // A straight line and a corner
+        for (z in 1..5) put(1, 1, z, rail)
+        for (x in 3..5) put(x, 1, 1, rail)
+        for (z in 2..3) put(5, 1, z, rail)
+        // Up a step and back down
+        put(8, 1, 4, planks)
+        put(8, 1, 5, planks)
+        for (z in 1..3) put(8, 1, z, rail)
+        put(8, 2, 4, rail)
+        put(8, 2, 5, rail)
+        for (z in 6..7) put(8, 1, z, rail)
+        // Powered by a torch, then a detector and an activator rail
+        put(0, 1, 9, Blocks.REDSTONE_TORCH.defaultBlockState())
+        for (x in 1..3) put(x, 1, 9, Blocks.POWERED_RAIL.defaultBlockState())
+        put(4, 1, 9, Blocks.DETECTOR_RAIL.defaultBlockState())
+        put(5, 1, 9, Blocks.ACTIVATOR_RAIL.defaultBlockState())
+        // On stone and andesite a player placed, both kinds the helm leaves out so it never takes the ground
+        put(7, 0, 9, Blocks.STONE.defaultBlockState())
+        put(8, 0, 9, Blocks.ANDESITE.defaultBlockState())
+        put(7, 1, 9, rail)
+        put(8, 1, 9, rail)
+        // On a top slab
+        put(10, 0, 12, Blocks.OAK_SLAB.defaultBlockState().setValue(BlockStateProperties.SLAB_TYPE, net.minecraft.world.level.block.state.properties.SlabType.TOP))
+        put(10, 1, 12, rail)
+        // A long loop the helm sits beside
+        for (x in 1..9) put(x, 1, 11, rail)
+        val helm = origin.offset(5, 1, 14)
+        put(5, 1, 14, block("vs_eureka:oak_ship_helm").defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH))
+        return helm
+    }
+
+    private var probeRegistered = false
+
+    /** Reads what physics says about how much of a ship is in water, for the water speed test. */
+    class OverlapProbe : org.valkyrienskies.core.api.ships.ShipPhysicsListener {
+        @Volatile
+        @com.fasterxml.jackson.annotation.JsonIgnore
+        var overlap = -1.0
+
+        override fun physTick(physShip: org.valkyrienskies.core.api.ships.PhysShip, physLevel: org.valkyrienskies.core.api.world.PhysLevel) {
+            overlap = physShip.liquidOverlap
+        }
+    }
+
+    /**
+     * The throttle with real keys: W raises it, letting go keeps it, getting off the helm keeps the ship going, and S
+     * takes it down to 0, waits there a moment and then into reverse. Turning needs running engines.
+     */
+    fun throttleTest(context: ClientGameTestContext) {
+        val hud = java.util.concurrent.CopyOnWriteArrayList<String>()
+        net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.GAME.register(
+            net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.Game { message, overlay -> if (overlay) hud.add(message.string) }
+        )
+        context.worldBuilder().setUseConsistentSettings(false).create().use { world ->
+            val server = world.server
+            server.runCommand("gamerule doDaylightCycle false")
+            server.runCommand("time set noon")
+            server.runCommand("weather clear")
+            context.waitTicks(40)
+            server.runOnServer<RuntimeException> { DevSelfTest.startMotion() }
+            context.waitTicks(125)
+            server.runOnServer<RuntimeException> { s -> DevSelfTest.addFuel(s.overworld()) }
+            context.waitTicks(60)
+            fun control(level: ServerLevel) = ship(level).getAttachment(org.valkyrienskies.eureka.ship.EurekaShipControl::class.java)!!
+            fun state(tag: String) = server.runOnServer<RuntimeException> { s ->
+                val level = s.overworld()
+                val loaded = ship(level)
+                val up = loaded.transform.shipToWorldRotation.transform(Vector3d(0.0, 1.0, 0.0))
+                log("throttle $tag throttle=%.3f speed=%.2f yaw rate=%.1f deg/s tilt=%.1f driving=%s hud=%s".format(
+                    control(level).throttle, loaded.velocity.length(), Math.toDegrees(loaded.angularVelocity.y()),
+                    Math.toDegrees(up.angle(Vector3d(0.0, 1.0, 0.0))),
+                    loaded.getAttachment(SeatedControllingPlayer::class.java) != null, hud.lastOrNull()))
+            }
+            fun sit() = server.runOnServer<RuntimeException> { s ->
+                log("throttle sat down ${DevSelfTest.helm(s.overworld())!!.sit(s.playerList.players[0], true)}")
+            }
+            fun hold(key: (net.minecraft.client.Options) -> net.minecraft.client.KeyMapping, ticks: Int) {
+                context.input.holdKey(key)
+                context.waitTicks(ticks)
+                context.input.releaseKey(key)
+            }
+            sit()
+            context.waitTicks(20)
+            state("seated")
+            hold({ it.keyUp }, 20)
+            state("after 1 s of W")
+            context.waitTicks(40)
+            state("W let go for 2 s")
+            hold({ it.keyUp }, 40)
+            context.waitTicks(60)
+            state("after 2 s more of W")
+            hold({ it.keyShift }, 10)
+            context.waitTicks(80)
+            state("off the helm 4 s")
+            sit()
+            context.waitTicks(20)
+            server.runOnServer<RuntimeException> { s -> control(s.overworld()).enginesPaused = true }
+            context.waitTicks(20)
+            hold({ it.keyLeft }, 40)
+            state("2 s of A with engines paused")
+            server.runOnServer<RuntimeException> { s -> control(s.overworld()).enginesPaused = false }
+            context.waitTicks(60)
+            context.input.holdKey { it.keyLeft }
+            for (half in 1..4) {
+                context.waitTicks(10)
+                state("A with engines running ${half * 0.5} s")
+            }
+            context.input.releaseKey { it.keyLeft }
+            context.waitTicks(20)
+            state("A let go 1 s")
+            context.input.holdKey { it.keyDown }
+            for (tick in 1..60) {
+                context.waitTicks(1)
+                if (tick % 3 == 0 || tick in 38..48) server.runOnServer<RuntimeException> { s ->
+                    log("throttle S held tick $tick throttle=%.3f".format(control(s.overworld()).throttle))
+                }
+            }
+            context.input.releaseKey { it.keyDown }
+            context.waitTicks(40)
+            state("S let go 2 s")
+            log("throttle shown above the XP bar: ${hud.distinct().take(12)}")
+        }
+        log("throttle test finished")
+    }
+
     class SpeedRun(val name: String, val width: Int, val length: Int, val engines: Int)
 
     /** Builds a flying deck, puts engines on it and drives it flat out, then reports the speed it settles at. */
@@ -848,17 +1043,47 @@ object DevFeatureTest {
                 val (w, l, e) = dims.split("x").map(String::toInt)
                 SpeedRun(name, w, l, e)
             }
-        context.worldBuilder().create().use { world ->
+        // VS_TEST_SPEED_WATER=1 floats the ships on an ocean instead of flying them
+        val water = System.getenv("VS_TEST_SPEED_WATER") != null
+        System.getenv("VS_TEST_BLOCK_DRAG_ABOVE")?.let { org.valkyrienskies.eureka.EurekaConfig.SERVER.noBlockDragAboveMass = it.toDouble() }
+        if (water && !probeRegistered) {
+            org.valkyrienskies.mod.common.ValkyrienSkiesMod.vsCore.registerAttachment(OverlapProbe::class.java)
+            probeRegistered = true
+        }
+        val builder = if (water) context.worldBuilder().setUseConsistentSettings(false).adjustSettings { it.setSeed("7") } else context.worldBuilder()
+        builder.create().use { world ->
             val server = world.server
+            System.getenv("VS_TEST_LOAD_DISTANCE")?.toDouble()?.let {
+                org.valkyrienskies.core.impl.config.VSCoreConfig.SERVER.shipLoadDistance = it
+                org.valkyrienskies.core.impl.config.VSCoreConfig.SERVER.shipUnloadDistance = it + 68.0
+            }
             server.runCommand("gamerule doDaylightCycle false")
             server.runCommand("time set noon")
             context.runOnClient<RuntimeException> { mc ->
                 mc.options.renderDistance().set((System.getenv("VS_TEST_VIEW") ?: "4").toInt())
                 System.getenv("VS_TEST_SIM")?.let { mc.options.simulationDistance().set(it.toInt()) }
+                mc.options.broadcastOptions()
+            }
+            var sea = BlockPos(0, 200, 0)
+            if (water) server.runOnServer<RuntimeException> { s ->
+                val level = s.overworld()
+                val deep = net.minecraft.tags.BiomeTags.IS_DEEP_OCEAN
+                val found = level.findClosestBiome3d({ it.`is`(deep) }, BlockPos(0, 62, 0), 6400, 32, 64)!!.first
+                // The closest deep ocean is its edge, look further in for room for every boat end to end without land
+                val wide = runs.maxOf { it.width } + runs.size * 40
+                val long = runs.maxOf { it.length } + 20
+                // Some open sea ahead too. A fast boat still reaches land eventually, no sea is long enough for 40 s flat out.
+                fun fits(corner: BlockPos) = (-200..long step 16).all { z -> (0..wide step 16).all { x -> level.getBiome(corner.offset(x, 0, z)).`is`(deep) } }
+                val corner = (0..12).asSequence().flatMap { r -> (-r..r).asSequence().flatMap { dx -> (-r..r).asSequence().map { dz -> Triple(r, dx, dz) } } }
+                    .filter { (r, dx, dz) -> maxOf(kotlin.math.abs(dx), kotlin.math.abs(dz)) == r }
+                    .map { (_, dx, dz) -> BlockPos(found.x + dx * 64, level.seaLevel - 1, found.z + dz * 64) }
+                    .firstOrNull(::fits)
+                sea = corner ?: BlockPos(found.x, level.seaLevel - 1, found.z)
+                log("speed water ocean at $sea, room for the boats=${corner != null}")
             }
             for ((i, run) in runs.withIndex()) {
                 var ship: ServerShip? = null
-                val origin = BlockPos(i * 40, 200, 0)
+                val origin = sea.offset(i * 40, 0, 0)
                 server.runOnServer<RuntimeException> { s ->
                     val level = s.overworld()
                     val p = s.playerList.players[0]
@@ -867,7 +1092,7 @@ object DevFeatureTest {
                 }
                 // Assembly needs every chunk under the ship ticking
                 context.waitTicks((System.getenv("VS_TEST_SPEED_WAIT") ?: "1").toInt())
-                server.runOnServer<RuntimeException> { s -> ship = buildSpeedShip(s.overworld(), origin, run) }
+                server.runOnServer<RuntimeException> { s -> ship = buildSpeedShip(s.overworld(), origin, run, water) }
                 context.waitTicks(40)
                 server.runOnServer<RuntimeException> { s ->
                     val level = s.overworld()
@@ -875,6 +1100,7 @@ object DevFeatureTest {
                     val driver = SeatedControllingPlayer(Direction.NORTH)
                     driver.forwardImpulse = 1f
                     loaded.setAttachment(driver)
+                    if (water) loaded.setAttachment(OverlapProbe())
                 }
                 var last = 0.0
                 for (second in 1..(System.getenv("VS_TEST_SPEED_SECONDS") ?: "30").toInt()) {
@@ -889,10 +1115,14 @@ object DevFeatureTest {
                         last = hypot(v.x(), v.z())
                         val up = loaded.transform.shipToWorldRotation.transform(Vector3d(0.0, 1.0, 0.0))
                         val tilt = Math.toDegrees(up.angle(Vector3d(0.0, 1.0, 0.0)))
+                        if (water && second % 5 == 0) {
+                            log("speed ${run.name} in water: liquid overlap=%.4f".format((loaded as LoadedServerShip).getAttachment(OverlapProbe::class.java)?.overlap ?: -1.0))
+                        }
                         if (second % 5 == 0) {
                             val box = loaded.shipAABB!!
-                            log("speed ${run.name} ${run.width}x${run.length} engines=${run.engines} t=${second}s speed=%.1f mass=%.0f long=%d tilt=%.1f y=%.1f".format(
-                                last, loaded.inertiaData.mass, maxOf(box.maxX() - box.minX(), box.maxZ() - box.minZ()), tilt, pos.y()))
+                            log("speed ${run.name} ${run.width}x${run.length} engines=${run.engines} t=${second}s speed=%.1f mass=%.0f long=%d tilt=%.1f y=%.1f mspt=%.1f physics tps=%.0f".format(
+                                last, loaded.inertiaData.mass, maxOf(box.maxX() - box.minX(), box.maxZ() - box.minZ()), tilt, pos.y(),
+                                s.currentSmoothedTickTime, s.vsPipeline.computePhysTps()))
                         }
                     }
                 }
@@ -904,13 +1134,16 @@ object DevFeatureTest {
                             val driver = loaded.getAttachment(SeatedControllingPlayer::class.java) ?: return@runOnServer
                             driver.forwardImpulse = forward
                             driver.leftImpulse = left
+                            if (forward == 0f) loaded.getAttachment(org.valkyrienskies.eureka.ship.EurekaShipControl::class.java)?.throttle = 0.0
                         }
                         fun turnRate(tag: String) = server.runOnServer<RuntimeException> { s ->
                             val level = s.overworld()
                             val loaded = level.shipObjectWorld.loadedShips.getById(ship!!.id) ?: return@runOnServer
                             val pos = loaded.transform.positionInWorld
                             s.playerList.players[0].teleportTo(level, pos.x(), pos.y() + 15.0, pos.z(), setOf(), 180f, 30f, true)
-                            log("turn ${run.name} $phase $tag yaw rate=%.1f deg/s speed=%.1f".format(Math.toDegrees(loaded.angularVelocity.y()), loaded.velocity.length()))
+                            val up = loaded.transform.shipToWorldRotation.transform(Vector3d(0.0, 1.0, 0.0))
+                            log("turn ${run.name} $phase $tag yaw rate=%.1f deg/s speed=%.1f tilt=%.1f".format(
+                                Math.toDegrees(loaded.angularVelocity.y()), loaded.velocity.length(), Math.toDegrees(up.angle(Vector3d(0.0, 1.0, 0.0)))))
                         }
                         if (forward == 0f) { drive(0f); context.waitTicks(200) }
                         drive(1f)
@@ -924,6 +1157,7 @@ object DevFeatureTest {
                     val level = s.overworld()
                     (level.shipObjectWorld.loadedShips.getById(ship!!.id) as? LoadedServerShip)?.let {
                         it.getAttachment(SeatedControllingPlayer::class.java)?.forwardImpulse = 0f
+                        it.getAttachment(org.valkyrienskies.eureka.ship.EurekaShipControl::class.java)?.throttle = 0.0
                     }
                 }
             }
@@ -931,11 +1165,12 @@ object DevFeatureTest {
         log("speed test finished")
     }
 
-    private fun buildSpeedShip(level: ServerLevel, origin: BlockPos, run: SpeedRun): ServerShip? {
-        val balloon = block("vs_eureka:balloon").defaultBlockState()
+    private fun buildSpeedShip(level: ServerLevel, origin: BlockPos, run: SpeedRun, water: Boolean = false): ServerShip? {
+        // Flying decks hang under balloons, boats get a second layer of planks as a hull
+        val under = if (water) Blocks.OAK_PLANKS.defaultBlockState() else block("vs_eureka:balloon").defaultBlockState()
         for (x in 0 until run.width) for (z in 0 until run.length) {
             level.setBlock(origin.offset(x, 0, z), Blocks.OAK_PLANKS.defaultBlockState(), 3)
-            level.setBlock(origin.offset(x, -1, z), balloon, 3)
+            level.setBlock(origin.offset(x, -1, z), under, 3)
         }
         val helm = origin.offset(run.width / 2, 1, run.length - 1)
         level.setBlock(helm, block("vs_eureka:oak_ship_helm").defaultBlockState()
@@ -953,6 +1188,7 @@ object DevFeatureTest {
             }
             y++
         }
-        return ShipAssembler.collectBlocks(level, helm) { !it.isAir }
+        // Not the sea around a boat
+        return ShipAssembler.collectBlocks(level, helm) { !it.isAir && it.fluidState.isEmpty }
     }
 }

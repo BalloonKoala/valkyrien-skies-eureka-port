@@ -1,9 +1,10 @@
 package org.valkyrienskies.mod.common.world
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet
 import net.minecraft.server.MinecraftServer
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.ChunkPos
-import org.apache.commons.lang3.mutable.MutableObject
 import org.valkyrienskies.core.internal.world.VsiServerShipWorld
 import org.valkyrienskies.core.internal.world.chunks.VsiChunkUnwatchTask
 import org.valkyrienskies.core.internal.world.chunks.VsiChunkWatchTask
@@ -14,8 +15,24 @@ import org.valkyrienskies.mod.common.mcPlayer
 import org.valkyrienskies.mod.common.util.MinecraftPlayer
 import org.valkyrienskies.mod.mixin.accessors.server.level.ChunkMapAccessor
 import org.valkyrienskies.mod.util.logger
+import java.util.UUID
 
 object ChunkManagement {
+    /**
+     * VS core watches every ship chunk by its own distance to a player, so on a ship longer than about 256 blocks the
+     * far end never loaded and the whole ship stayed frozen, since a ship only moves with all of it loaded. Here a ship
+     * loads as a whole, and goes to a player as a whole, as soon as core watches any chunk of it for that player.
+     */
+    private class WholeShip(val dimension: String) {
+        // Per player, the chunks of this ship core itself watches for them
+        val watchedByCore = HashMap<UUID, LongOpenHashSet>()
+        // Per player, every chunk of this ship they have been sent
+        val sentTo = HashMap<UUID, LongOpenHashSet>()
+        val forced = LongOpenHashSet()
+    }
+
+    private val wholeShips = HashMap<Long, WholeShip>()
+
     @JvmStatic
     fun tickChunkLoading(shipWorld: VsiServerShipWorld, server: MinecraftServer) {
         val (chunkWatchTasks, chunkUnwatchTasks) = shipWorld.getChunkWatchTasks()
@@ -32,6 +49,15 @@ object ChunkManagement {
 
             val level = server.getLevelFromDimensionId(chunkWatchTask.dimensionId)!!
             level.chunkSource.updateChunkForced(chunkPos, true)
+
+            val whole = shipWorld.allShips.getByChunkPos(chunkPos.x, chunkPos.z, chunkWatchTask.dimensionId)?.let { ship ->
+                wholeShips.getOrPut(ship.id) { WholeShip(chunkWatchTask.dimensionId) }
+            }
+            for (player in chunkWatchTask.playersNeedWatching) {
+                val serverPlayer = (player as MinecraftPlayer).playerEntityReference.get() as ServerPlayer? ?: continue
+                whole?.watchedByCore?.getOrPut(serverPlayer.uuid) { LongOpenHashSet() }?.add(chunkPos.pack())
+                whole?.sentTo?.getOrPut(serverPlayer.uuid) { LongOpenHashSet() }?.add(chunkPos.pack())
+            }
 
             level.server.executeIf({ level.isTickingChunk(chunkPos) }) {
                 for (player in chunkWatchTask.playersNeedWatching) {
@@ -54,18 +80,82 @@ object ChunkManagement {
                     chunkUnwatchTask.chunkX + " : " + chunkUnwatchTask.chunkZ
             )
             val chunkPos = ChunkPos(chunkUnwatchTask.chunkX, chunkUnwatchTask.chunkZ)
-
-            if (chunkUnwatchTask.shouldUnload) {
-                val level = server.getLevelFromDimensionId(chunkUnwatchTask.dimensionId)!!
-                level.chunkSource.updateChunkForced(chunkPos, false)
-            }
+            val ship = shipWorld.allShips.getByChunkPos(chunkPos.x, chunkPos.z, chunkUnwatchTask.dimensionId)
+            val whole = ship?.let { wholeShips[it.id] }
 
             for (player in chunkUnwatchTask.playersNeedUnwatching) {
-                (player.mcPlayer as ServerPlayer).let { it.connection.chunkSender.dropChunk(it, chunkPos) }
+                val serverPlayer = player.mcPlayer as ServerPlayer
+                val watched = whole?.watchedByCore?.get(serverPlayer.uuid)
+                watched?.remove(chunkPos.pack())
+                // Still near another part of the same ship, so it keeps all of it
+                if (watched != null && watched.isNotEmpty()) continue
+                serverPlayer.connection.chunkSender.dropChunk(serverPlayer, chunkPos)
+                if (whole != null) dropShipFor(whole, serverPlayer)
+            }
+
+            if (chunkUnwatchTask.shouldUnload) {
+                if (whole == null || whole.watchedByCore.isEmpty()) {
+                    val level = server.getLevelFromDimensionId(chunkUnwatchTask.dimensionId)!!
+                    level.chunkSource.updateChunkForced(chunkPos, false)
+                } else {
+                    // Stays loaded with the rest of the ship, and unloads with it
+                    whole.forced.add(chunkPos.pack())
+                }
             }
         }
 
         shipWorld.setExecutedChunkWatchTasks(chunkWatchTasks, chunkUnwatchTasks)
+
+        keepShipsWhole(shipWorld, server)
+    }
+
+    // Stops sending a ship to a player that has gone away from all of it
+    private fun dropShipFor(whole: WholeShip, player: ServerPlayer) {
+        whole.watchedByCore.remove(player.uuid)
+        val sent = whole.sentTo.remove(player.uuid) ?: return
+        val iterator = sent.iterator()
+        while (iterator.hasNext()) player.connection.chunkSender.dropChunk(player, ChunkPos.unpack(iterator.nextLong()))
+    }
+
+    private fun keepShipsWhole(shipWorld: VsiServerShipWorld, server: MinecraftServer) {
+        val iterator = wholeShips.entries.iterator()
+        while (iterator.hasNext()) {
+            val (shipId, whole) = iterator.next()
+            val level = server.getLevelFromDimensionId(whole.dimension)
+            val ship = shipWorld.allShips.getById(shipId)
+            // Players that left or went to another dimension stop counting, core watches them again if they come back
+            whole.watchedByCore.keys.removeIf { uuid ->
+                val player = server.playerList.getPlayer(uuid)
+                val gone = player == null || level == null || player.level() !== level || ship == null
+                if (gone) whole.sentTo.remove(uuid)
+                gone
+            }
+            whole.watchedByCore.values.removeIf { it.isEmpty() }
+            if (ship == null || level == null || whole.watchedByCore.isEmpty()) {
+                if (level != null) unforceAll(level, whole)
+                iterator.remove()
+                continue
+            }
+            ship.activeChunksSet.forEach { chunkX, chunkZ ->
+                val key = ChunkPos.pack(chunkX, chunkZ)
+                val chunkPos = ChunkPos(chunkX, chunkZ)
+                if (whole.forced.add(key)) level.chunkSource.updateChunkForced(chunkPos, true)
+                for (uuid in whole.watchedByCore.keys) {
+                    val sent = whole.sentTo.getOrPut(uuid) { LongOpenHashSet() }
+                    if (!sent.add(key)) continue
+                    level.server.executeIf({ level.isTickingChunk(chunkPos) }) {
+                        val player = server.playerList.getPlayer(uuid) ?: return@executeIf
+                        (level.chunkSource.chunkMap as ChunkMapAccessor).callMarkChunkPendingToSend(player, chunkPos)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun unforceAll(level: ServerLevel, whole: WholeShip) {
+        val iterator = whole.forced.iterator()
+        while (iterator.hasNext()) level.chunkSource.updateChunkForced(ChunkPos.unpack(iterator.nextLong()), false)
+        whole.forced.clear()
     }
 
     private val logger by logger()
