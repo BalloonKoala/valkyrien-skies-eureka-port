@@ -1,5 +1,6 @@
 package org.valkyrienskies.eureka.block
 
+import org.valkyrienskies.mod.common.config.AddedFeatures
 import net.minecraft.core.BlockPos
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.Entity
@@ -33,6 +34,7 @@ class WirelessButtonBlock(type: BlockSetType, properties: BlockBehaviour.Propert
     }
 
     fun pulse(state: BlockState, level: Level, pos: BlockPos) {
+        if (!AddedFeatures.wirelessButtons) return
         if (!state.getValue(POWERED)) press(state, level, pos, null)
     }
 

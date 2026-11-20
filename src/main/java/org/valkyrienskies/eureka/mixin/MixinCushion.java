@@ -34,7 +34,8 @@ public abstract class MixinCushion extends BlockAttachedEntity {
     @Inject(method = "interact", at = @At("HEAD"), cancellable = true)
     private void driveFromCushion(final Player player, final InteractionHand hand, final Vec3 location,
         final CallbackInfoReturnable<InteractionResult> cir) {
-        if (this.level().isClientSide() || player.isSecondaryUseActive() || this.isVehicle()) {
+        if (this.level().isClientSide() || player.isSecondaryUseActive() || this.isVehicle()
+            || !org.valkyrienskies.mod.common.config.AddedFeatures.getCushionDriverSeat()) {
             return;
         }
         final ShipHelmBlockEntity helm = vs_eureka$findHelm();

@@ -1,5 +1,6 @@
 package org.valkyrienskies.mod.mixin.server.world;
 
+import org.valkyrienskies.mod.common.config.AddedFeatures;
 import org.valkyrienskies.mod.common.world.ShipTerrainTickets;
 import org.valkyrienskies.core.api.ships.ServerShip;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -259,8 +260,13 @@ public abstract class MixinServerLevel implements IShipObjectWorldServerProvider
         final List<int[]> shipAreas = vs$shipTerrainAreas(shipObjectWorld, dimension);
         // Only the chunks physics needs get looked at, not every loaded chunk, which on a server with players spread
         // out is thousands of chunks every tick
-        final LongOpenHashSet needed = vs$chunksNeededByPhysics(shipObjectWorld, dimension, shipAreas);
-        ShipTerrainTickets.tick(self, shipObjectWorld, dimension);
+        // Turned off in added-features.toml, physics gets every loaded chunk like Valkyrien Skies 2.4.11. In 26.x the
+        // chunks around players carry no ticket of their own, so then being fully loaded is enough.
+        final boolean onlyNearShips = AddedFeatures.getTerrainOnlyNearShips();
+        final LongOpenHashSet needed = onlyNearShips
+            ? vs$chunksNeededByPhysics(shipObjectWorld, dimension, shipAreas)
+            : new LongOpenHashSet(chunkMapAccessor.getVisibleChunkMap().keySet());
+        if (AddedFeatures.getGroundLoadedUnderShips()) ShipTerrainTickets.tick(self, shipObjectWorld, dimension);
 
         final LongIterator neededIterator = needed.iterator();
         while (neededIterator.hasNext()) {
@@ -270,7 +276,7 @@ public abstract class MixinServerLevel implements IShipObjectWorldServerProvider
             final ChunkHolder chunkHolder = chunkMapAccessor.callGetVisibleChunkIfPresent(key);
             if (chunkHolder == null) continue;
             // Only load chunks that haven't been loaded before, and have a ticket
-            if (!distanceManagerAccessor.getTicketStorage().getTickets(key).isEmpty()) {
+            if (!onlyNearShips || !distanceManagerAccessor.getTicketStorage().getTickets(key).isEmpty()) {
                 // Loaded is enough, physics only needs the blocks. Chunks further from players than the simulation
                 // distance never tick, and those are often under the far end of a long ship.
                 final ChunkResult<LevelChunk> worldChunkResult =
@@ -290,7 +296,7 @@ public abstract class MixinServerLevel implements IShipObjectWorldServerProvider
             // Unload chunks if they don't have tickets, if they're not in the visible chunks, or no ship is near anymore
             final ChunkPos knownPos = knownChunkPosEntry.getKey();
             if (!needed.contains(chunkPos)
-                || distanceManagerAccessor.getTicketStorage().getTickets(chunkPos).isEmpty()
+                || (onlyNearShips && distanceManagerAccessor.getTicketStorage().getTickets(chunkPos).isEmpty())
                 || chunkMapAccessor.callGetVisibleChunkIfPresent(chunkPos) == null) {
                 final long ticksWaitingToUnload = vs$chunksToUnload.getOrDefault(chunkPos, 0L);
                 if (ticksWaitingToUnload > VS$CHUNK_UNLOAD_THRESHOLD) {

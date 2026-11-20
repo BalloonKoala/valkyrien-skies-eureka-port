@@ -1,5 +1,6 @@
 package org.valkyrienskies.eureka.util
 
+import org.valkyrienskies.mod.common.config.AddedFeatures
 import net.minecraft.world.level.block.BaseRailBlock
 import net.minecraft.world.level.block.state.properties.RailShape
 import com.google.common.collect.Sets
@@ -59,11 +60,11 @@ object ShipAssembler {
             level, center, blocks, predicate, limit, false,
             stopAt = { pos, state -> PlacedBlocks.isWorldGenerated(level, pos, state).also { if (it) worldGenerated.add(pos.immutable()) } },
             // Stone, dirt and the like stay out so a ship never takes the ground, unless a player placed them
-            alsoTake = { pos, state -> !state.isAir && PlacedBlocks.isPlaced(level, pos) }
+            alsoTake = { pos, state -> AddedFeatures.railsComeAlong && !state.isAir && PlacedBlocks.isPlaced(level, pos) }
         )
         val taken = blocks.toHashSet()
         // A rail resting on a block that stays behind stays behind with it, on the ship it would break off
-        blocks.removeAll { pos ->
+        if (AddedFeatures.railsComeAlong) blocks.removeAll { pos ->
             val state = level.getBlockState(pos)
             val rail = state.block as? BaseRailBlock ?: return@removeAll false
             railSupports(pos, state.getValue(rail.shapeProperty)).any { it !in taken }

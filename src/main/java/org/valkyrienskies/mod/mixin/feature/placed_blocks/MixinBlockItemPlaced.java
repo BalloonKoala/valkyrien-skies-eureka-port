@@ -7,6 +7,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import org.spongepowered.asm.mixin.Mixin;
+import org.valkyrienskies.eureka.util.TurnedOff;
 import org.valkyrienskies.mod.common.PlacedBlocks;
 
 /** Whatever a player places with a block item counts as theirs, both halves of a door or a bed included. */
@@ -14,6 +15,11 @@ import org.valkyrienskies.mod.common.PlacedBlocks;
 public abstract class MixinBlockItemPlaced {
     @WrapMethod(method = "place")
     private InteractionResult vs$rememberPlaced(final BlockPlaceContext context, final Operation<InteractionResult> original) {
+        // Blocks turned off in added-features.toml can't be placed, by players or dispensers
+        if (!TurnedOff.itemOn((BlockItem) (Object) this)) {
+            TurnedOff.tell(context.getPlayer());
+            return InteractionResult.FAIL;
+        }
         if (context.getPlayer() == null || !(context.getLevel() instanceof ServerLevel)) {
             return original.call(context);
         }

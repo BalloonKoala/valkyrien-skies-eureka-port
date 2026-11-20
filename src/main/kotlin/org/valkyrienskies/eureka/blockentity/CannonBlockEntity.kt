@@ -81,7 +81,7 @@ class CannonBlockEntity(pos: BlockPos, state: BlockState) :
     override fun getDefaultName(): Component = Component.translatable("container.vs_eureka.cannon")
 
     // Cannons only fire cannonballs
-    override fun canPlaceItem(slot: Int, stack: ItemStack): Boolean = stack.item is CannonballItem
+    override fun canPlaceItem(slot: Int, stack: ItemStack): Boolean = isAmmo(stack)
 
     private val facing: Direction get() = blockState.getValueOrElse(DispenserBlock.FACING, Direction.NORTH)
 
@@ -194,14 +194,20 @@ class CannonBlockEntity(pos: BlockPos, state: BlockState) :
 
     override fun getUpdatePacket(): Packet<ClientGamePacketListener> = ClientboundBlockEntityDataPacket.create(this)
 
-    private companion object {
-        const val KEY_TAG = "Key"
-        const val CONTACT_TAG = "Contact"
-        const val FIRE_DELAY_TICKS = 4
-        const val TURN_TAG = "AimTurn"
-        const val TILT_TAG = "AimTilt"
-        const val MIN_CHANGE = 0.25f
-        const val GRACE_TICKS = 6
-        const val MAX_AIM_DISTANCE = 8.0
+    companion object {
+        private const val KEY_TAG = "Key"
+        private const val CONTACT_TAG = "Contact"
+        private const val FIRE_DELAY_TICKS = 4
+        private const val TURN_TAG = "AimTurn"
+        private const val TILT_TAG = "AimTilt"
+        private const val MIN_CHANGE = 0.25f
+        private const val GRACE_TICKS = 6
+        private const val MAX_AIM_DISTANCE = 8.0
+
+        /** What a cannon fires: cannonballs, or TNT while cannonballs are turned off in added-features.toml. */
+        @JvmStatic
+        fun isAmmo(stack: ItemStack): Boolean =
+            if (org.valkyrienskies.mod.common.config.AddedFeatures.cannonballs) stack.item is CannonballItem
+            else stack.`is`(net.minecraft.world.item.Items.TNT)
     }
 }

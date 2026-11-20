@@ -1,5 +1,6 @@
 package org.valkyrienskies.eureka.block
 
+import org.valkyrienskies.mod.common.config.AddedFeatures
 import net.minecraft.core.BlockPos
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.sounds.SoundEvents
@@ -38,6 +39,7 @@ class ElectricWeightBlock(properties: BlockBehaviour.Properties) : Block(propert
     }
 
     private fun flipOnPulse(state: BlockState, level: ServerLevel, pos: BlockPos) {
+        if (!AddedFeatures.electricWeight) return
         val powered = level.hasNeighborSignal(pos)
         if (powered == state.getValue(POWERED)) return
         var next = state.setValue(POWERED, powered)

@@ -20,6 +20,7 @@
       "org.valkyrienskies.eureka.fabric.EurekaModFabric"
     ],
     "client": ["org.valkyrienskies.eureka.fabric.EurekaModFabric$Client"],
+    "jei_mod_plugin": ["org.valkyrienskies.eureka.compat.jei.EurekaJeiPlugin"],
     "preLaunch": ["org.valkyrienskies.eureka.fabric.ValkyrienPreLaunch"]DEV_ENTRYPOINT
   },
   "mixins": [

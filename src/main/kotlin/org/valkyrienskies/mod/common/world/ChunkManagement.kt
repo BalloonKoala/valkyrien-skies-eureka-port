@@ -36,6 +36,8 @@ object ChunkManagement {
     @JvmStatic
     fun tickChunkLoading(shipWorld: VsiServerShipWorld, server: MinecraftServer) {
         val (chunkWatchTasks, chunkUnwatchTasks) = shipWorld.getChunkWatchTasks()
+        // Turned off in added-features.toml, each chunk of a ship loads by its own distance like Valkyrien Skies 2.4.11
+        val wholeOn = org.valkyrienskies.mod.common.config.AddedFeatures.wholeShipLoading
 
         // for now, just do all the watch tasks
 
@@ -50,7 +52,7 @@ object ChunkManagement {
             val level = server.getLevelFromDimensionId(chunkWatchTask.dimensionId)!!
             level.chunkSource.updateChunkForced(chunkPos, true)
 
-            val whole = shipWorld.allShips.getByChunkPos(chunkPos.x, chunkPos.z, chunkWatchTask.dimensionId)?.let { ship ->
+            val whole = if (!wholeOn) null else shipWorld.allShips.getByChunkPos(chunkPos.x, chunkPos.z, chunkWatchTask.dimensionId)?.let { ship ->
                 wholeShips.getOrPut(ship.id) { WholeShip(chunkWatchTask.dimensionId) }
             }
             for (player in chunkWatchTask.playersNeedWatching) {
@@ -81,7 +83,7 @@ object ChunkManagement {
             )
             val chunkPos = ChunkPos(chunkUnwatchTask.chunkX, chunkUnwatchTask.chunkZ)
             val ship = shipWorld.allShips.getByChunkPos(chunkPos.x, chunkPos.z, chunkUnwatchTask.dimensionId)
-            val whole = ship?.let { wholeShips[it.id] }
+            val whole = if (!wholeOn) null else ship?.let { wholeShips[it.id] }
 
             for (player in chunkUnwatchTask.playersNeedUnwatching) {
                 val serverPlayer = player.mcPlayer as ServerPlayer
@@ -106,7 +108,23 @@ object ChunkManagement {
 
         shipWorld.setExecutedChunkWatchTasks(chunkWatchTasks, chunkUnwatchTasks)
 
-        keepShipsWhole(shipWorld, server)
+        if (wholeOn) keepShipsWhole(shipWorld, server) else letGoOfWholeShips(server)
+    }
+
+    // Switched off while running: chunks only kept for a whole ship go back to loading by their own distance
+    private fun letGoOfWholeShips(server: MinecraftServer) {
+        if (wholeShips.isEmpty()) return
+        for (whole in wholeShips.values) {
+            val level = server.getLevelFromDimensionId(whole.dimension) ?: continue
+            val watched = LongOpenHashSet()
+            whole.watchedByCore.values.forEach { watched.addAll(it) }
+            val iterator = whole.forced.iterator()
+            while (iterator.hasNext()) {
+                val key = iterator.nextLong()
+                if (!watched.contains(key)) level.chunkSource.updateChunkForced(ChunkPos.unpack(key), false)
+            }
+        }
+        wholeShips.clear()
     }
 
     // Stops sending a ship to a player that has gone away from all of it

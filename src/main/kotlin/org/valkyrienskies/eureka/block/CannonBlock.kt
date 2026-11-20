@@ -10,6 +10,7 @@ import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import org.valkyrienskies.eureka.item.CannonballItem
+import org.valkyrienskies.mod.common.config.AddedFeatures
 import net.minecraft.world.item.context.BlockPlaceContext
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
@@ -41,7 +42,8 @@ class CannonBlock(properties: BlockBehaviour.Properties) : DispenserBlock(proper
     override fun useWithoutItem(
         state: BlockState, level: Level, pos: BlockPos, player: Player, hitResult: BlockHitResult
     ): InteractionResult {
-        if (!player.isSecondaryUseActive) return super.useWithoutItem(state, level, pos, player, hitResult)
+        // A cannon that's turned off still opens, to take what's in it out
+        if (!player.isSecondaryUseActive || !AddedFeatures.cannon) return super.useWithoutItem(state, level, pos, player, hitResult)
         if (level is ServerLevel && player is ServerPlayer) {
             (level.getBlockEntity(pos) as? CannonBlockEntity)?.startAiming(player)
         }
@@ -62,6 +64,7 @@ class CannonBlock(properties: BlockBehaviour.Properties) : DispenserBlock(proper
 
         private fun crouchClick(player: Player, level: Level, pos: BlockPos): InteractionResult {
             if (!player.isSecondaryUseActive || player.isSpectator) return InteractionResult.PASS
+            if (!AddedFeatures.cannon || !AddedFeatures.cannonCrouchLeftClick) return InteractionResult.PASS
             val cannon = level.getBlockEntity(pos) as? CannonBlockEntity ?: return InteractionResult.PASS
             if (level is ServerLevel && player is ServerPlayer) cannon.startAiming(player)
             return InteractionResult.SUCCESS
@@ -99,8 +102,13 @@ class CannonBlock(properties: BlockBehaviour.Properties) : DispenserBlock(proper
 
     override fun dispenseFrom(level: ServerLevel, state: BlockState, pos: BlockPos) {
         val cannon = level.getBlockEntity(pos) as? CannonBlockEntity ?: return
-        // The first cannonball in the cannon, other things in it are never fired
-        val slot = (0 until cannon.containerSize).firstOrNull { cannon.getItem(it).item is CannonballItem }
+        if (!AddedFeatures.cannon) {
+            level.levelEvent(DISPENSER_FAIL_EVENT, pos, 0)
+            return
+        }
+        // The first cannonball in the cannon, other things in it are never fired. With cannonballs turned off it fires
+        // TNT, like cannons did before cannonballs.
+        val slot = (0 until cannon.containerSize).firstOrNull { CannonBlockEntity.isAmmo(cannon.getItem(it)) }
         if (slot == null) {
             level.levelEvent(DISPENSER_FAIL_EVENT, pos, 0)
             return

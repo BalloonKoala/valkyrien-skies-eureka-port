@@ -1,4 +1,14 @@
 {
+  "fabric:load_conditions": [
+    {
+      "condition": "valkyrienskies:added_feature",
+      "feature": "blocks.cannonballs"
+    },
+    {
+      "condition": "valkyrienskies:added_feature",
+      "feature": "blocks.cannon"
+    }
+  ],
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [

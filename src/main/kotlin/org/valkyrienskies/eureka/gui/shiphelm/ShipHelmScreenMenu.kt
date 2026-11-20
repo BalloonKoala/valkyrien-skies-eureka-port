@@ -24,14 +24,16 @@ class ShipHelmScreenMenu(syncId: Int, playerInv: Inventory, private val blockEnt
 
     override fun clickMenuButton(player: Player, id: Int): Boolean {
         if (blockEntity == null) return false
-        if (blockEntity.heldByDetacher) {
+        if (blockEntity.heldByDetacher && org.valkyrienskies.mod.common.config.AddedFeatures.detacher) {
             if (!player.level().isClientSide) blockEntity.refuseWhileHeld(player)
             return true
         }
 
         // Shows what would become the ship first, the Assemble button under that preview assembles it
         if (id == 0 && !assembled && player is ServerPlayer) {
-            AssemblyPreview.sendTo(player, blockEntity)
+            // Without the Info screen it assembles right away, like Eureka 1.6.4
+            if (org.valkyrienskies.mod.common.config.AddedFeatures.infoScreen) AssemblyPreview.sendTo(player, blockEntity)
+            else blockEntity.assemble(player)
             return true
         }
 
@@ -46,7 +48,8 @@ class ShipHelmScreenMenu(syncId: Int, playerInv: Inventory, private val blockEnt
         }
 
         if (id == WIRING_BUTTON && blockEntity.assembled && player is ServerPlayer) {
-            ShipWiring.sendTo(player, blockEntity.blockPos)
+            if (org.valkyrienskies.mod.common.config.AddedFeatures.wiringScreen) ShipWiring.sendTo(player, blockEntity.blockPos)
+            else org.valkyrienskies.eureka.util.TurnedOff.tell(player)
             return true
         }
 

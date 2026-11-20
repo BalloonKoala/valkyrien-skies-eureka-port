@@ -85,7 +85,9 @@ class ShipHelmBlock(properties: Properties, val woodType: IWoodType) : BaseEntit
          */
         fun registerCrouchToOpen() {
             net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register { player, level, hand, hit ->
-                if (hand != net.minecraft.world.InteractionHand.MAIN_HAND || !player.isSecondaryUseActive || player.isSpectator) {
+                if (hand != net.minecraft.world.InteractionHand.MAIN_HAND || !player.isSecondaryUseActive || player.isSpectator ||
+                    !org.valkyrienskies.mod.common.config.AddedFeatures.helmCrouchToOpen
+                ) {
                     return@register InteractionResult.PASS
                 }
                 val helm = level.getBlockEntity(hit.blockPos) as? ShipHelmBlockEntity ?: return@register InteractionResult.PASS

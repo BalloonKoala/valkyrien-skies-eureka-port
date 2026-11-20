@@ -1,5 +1,6 @@
 package org.valkyrienskies.eureka.block
 
+import org.valkyrienskies.mod.common.config.AddedFeatures
 import net.minecraft.world.level.ClipContext
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.HitResult
@@ -96,8 +97,12 @@ class DetacherBlock(properties: BlockBehaviour.Properties) : DirectionalBlock(pr
         val detacher = level.getBlockEntity(pos) as? DetacherBlockEntity ?: return
         if (detacher.poleOut) {
             stepPole(level, pos, state, detacher)
+        } else if (!AddedFeatures.detacher) {
+            level.playSound(null, pos, SoundEvents.DISPENSER_FAIL, SoundSource.BLOCKS, 1.0f, 1.2f)
         } else if (level.getBlockState(pos.relative(state.getValue(FACING))).isAir) {
-            shootPole(level, pos, state, detacher)
+            // Grab mode can be turned off, then a detacher holding nothing does nothing
+            if (AddedFeatures.detacherGrab) shootPole(level, pos, state, detacher)
+            else level.playSound(null, pos, SoundEvents.DISPENSER_FAIL, SoundSource.BLOCKS, 1.0f, 1.2f)
         } else {
             release(level, pos)
         }

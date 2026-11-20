@@ -36,7 +36,7 @@ class EngineScreen(handler: EngineScreenMenu, playerInventory: Inventory, text: 
 
     private fun updatePauseButton() {
         // An engine that isn't on a ship has nothing to pause
-        pauseButton.visible = menu.hasShipControl != 0
+        pauseButton.visible = menu.hasShipControl != 0 && org.valkyrienskies.mod.common.config.AddedFeatures.pauseAllEngines
         pauseButton.message = if (menu.enginesPaused != 0) RESUME_TEXT else PAUSE_TEXT
     }
 

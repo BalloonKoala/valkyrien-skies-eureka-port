@@ -54,7 +54,9 @@ object EntityDragger {
             var addedYRot = 0.0
 
             // A mob without AI never moves, so it can't find out what it's standing on through collisions
-            if (entity is Mob && entity.isNoAi && !entity.isPassenger && !entity.level().isClientSide) {
+            if (entity is Mob && entity.isNoAi && !entity.isPassenger && !entity.level().isClientSide &&
+                org.valkyrienskies.mod.common.config.AddedFeatures.noAiMobsRideShips
+            ) {
                 findShipUnderFeet(entity)?.let { entityDraggingInformation.lastShipStoodOn = it }
             }
 

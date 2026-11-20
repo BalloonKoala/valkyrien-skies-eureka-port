@@ -1491,6 +1491,11 @@ class DevClientTest : FabricClientGameTest {
     }
 
     override fun runTest(context: ClientGameTestContext) {
+        // Runs a test with some of added-features.toml turned off, comma separated "section.key" names
+        System.getenv("VS_TEST_SWITCH_OFF")?.split(",")?.filter { it.isNotBlank() }?.forEach {
+            org.valkyrienskies.mod.common.config.AddedFeatures.setLocal(it.trim(), false)
+            println("SELFTEST switched off $it")
+        }
         LevelExtractionEvents.END_EXTRACTION.register(LevelExtractionEvents.EndExtraction { ctx ->
             for (state in ctx.levelState().entityRenderStates) {
                 if ((state as EntityRenderStateDuck).`vs$getRenderedEntity`() === Minecraft.getInstance().player) {
@@ -1564,6 +1569,10 @@ class DevClientTest : FabricClientGameTest {
         }
         if (System.getenv("VS_TEST_JOIN") != null) {
             joinTest(context)
+            return
+        }
+        if (System.getenv("VS_TEST_CONFIG") != null) {
+            DevConfigTest.run(context)
             return
         }
         ClientReceiveMessageEvents.GAME.register(ClientReceiveMessageEvents.Game { message, _ ->

@@ -21,6 +21,7 @@ import org.valkyrienskies.core.api.util.GameTickOnly
 import org.valkyrienskies.core.api.util.PhysTickOnly
 import org.valkyrienskies.core.api.world.PhysLevel
 import org.valkyrienskies.eureka.EurekaConfig
+import org.valkyrienskies.mod.common.config.AddedFeatures
 import org.valkyrienskies.mod.api.SeatedControllingPlayer
 import org.valkyrienskies.mod.common.ValkyrienSkiesMod
 import org.valkyrienskies.mod.common.util.toJOMLD
@@ -41,6 +42,7 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
     internal var ship: LoadedServerShip? = null
 
     private var extraForceLinear = 0.0
+    private var extraForceAngular = 0.0
 
     var aligning = false
     var disassembling = false // Disassembling also affects position
@@ -83,6 +85,17 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
 
     @JsonIgnore
     private var throttleShownTicks = 0
+
+    // Eureka 1.6.4's cruise control, only while the throttle is turned off in added-features.toml
+    @JsonIgnore
+    private var wasCruisePressed = false
+
+    @JsonProperty("cruise")
+    var isCruising = false
+
+    @JsonIgnore
+    @Volatile
+    private var cruiseChanged = false
 
     @JsonIgnore
     var seatedPlayer: Player? = null
@@ -189,12 +202,28 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
         val validPlayer = controllingPlayer != null && !anchored
 
 
+        val useThrottle = AddedFeatures.throttle
         if (anchored) {
+            if (isCruising) {
+                isCruising = false
+                cruiseChanged = true
+            }
             physShip.isStatic = true
             return
         }
 
-        if (validPlayer) {
+        if (!useThrottle) {
+            // Eureka 1.6.4: hold W or S to move, C keeps the last controls going
+            if (validPlayer) {
+                val current = getControlData(controllingPlayer)
+                // only take the latest control data if the player is not cruising
+                if (!isCruising) controlData = current
+                wasCruisePressed = controllingPlayer.cruise
+            } else if (!isCruising) {
+                controlData = null
+                oldSpeed = 0.0
+            }
+        } else if (validPlayer) {
             controlData = ControlData.create(controllingPlayer)
         } else {
             // Nobody at the helm: the throttle keeps the ship going the way it last went, without turning or climbing
@@ -208,7 +237,7 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
             omega,
             vel,
             physShip,
-            controlData == null && !aligning,
+            (if (useThrottle) controlData == null else !validPlayer) && !aligning,
             !validPlayer
         )
 
@@ -231,6 +260,23 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
         // endregion
 
         physShip.isStatic = anchored
+    }
+
+    private fun getControlData(player: SeatedControllingPlayer): ControlData {
+        val currentControlData = ControlData.create(player)
+        if (!wasCruisePressed && player.cruise) {
+            // the player pressed the cruise button
+            isCruising = !isCruising
+            cruiseChanged = true
+        } else if (!player.cruise && isCruising &&
+            (player.leftImpulse != 0.0f || player.sprintOn || player.upImpulse != 0.0f || player.forwardImpulse != 0.0f) &&
+            currentControlData != controlData
+        ) {
+            // The player pressed another button
+            isCruising = false
+            cruiseChanged = true
+        }
+        return currentControlData
     }
 
     private fun getBalloonForce(): Double {
@@ -283,6 +329,22 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
         // acceleration = alpha * r
         // therefore: maxAlpha = maxAcceleration / r
 
+        if (!AddedFeatures.turningNeedsEngines) {
+            // Eureka 1.6.4's turning: a little without engines, more with every engine, braking as hard as it turns
+            val maxOmegaY = (ORIGINAL_TURN_SPEED + extraForceAngular) / largestDistance
+            val maxAlphaY = config.turnAcceleration / largestDistance
+            val multiplier =
+                if (abs(omega.y()) < maxOmegaY && control.leftImpulse != 0.0f) control.leftImpulse.toDouble()
+                else -omega.y().coerceIn(-1.0, 1.0)
+            val alphaY = multiplier * maxAlphaY
+            physShip.applyWorldTorque(
+                moiTensor.transform(Vector3d(0.0, alphaY, 0.0))
+                    .add(getPlayerControlledBanking(control, physShip, moiTensor, -alphaY, ORIGINAL_BANK_STRENGTH))
+            )
+            physShip.applyWorldForce(getPlayerForwardVel(control, physShip, liftFraction))
+            return
+        }
+
         // Turning takes engines. Each running one turns the ship a bit, a heavier ship less, levelling off at the
         // fastest a ship may turn. The far end of a long ship may only swing round so fast, so long ships turn slower.
         val turnPush = runningEngines() * config.turnDegreesPerEngine * massFactor(physShip.mass)
@@ -304,17 +366,19 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
 
         // A lean into the turn while turning, none while stopping, or small ships rocked about
         val bank = if (turning) -idealAlphaY else 0.0
-        physShip.applyWorldTorque(moiTensor.transform(Vector3d(0.0, idealAlphaY, 0.0)).add(getPlayerControlledBanking(control, physShip, moiTensor, bank)))
+        physShip.applyWorldTorque(moiTensor.transform(Vector3d(0.0, idealAlphaY, 0.0)).add(getPlayerControlledBanking(control, physShip, moiTensor, bank, BANK_STRENGTH)))
 
         physShip.applyWorldForce(getPlayerForwardVel(control, physShip, liftFraction))
     }
 
     @OptIn(PhysTickOnly::class)
-    private fun getPlayerControlledBanking(control: ControlData, physShip: PhysShip, moiTensor: Matrix3dc, strength: Double): Vector3d {
+    private fun getPlayerControlledBanking(
+        control: ControlData, physShip: PhysShip, moiTensor: Matrix3dc, strength: Double, bankStrength: Double
+    ): Vector3d {
         val rotationVector = control.seatInDirection.unitVec3i.toJOMLD()
         physShip.transform.shipToWorldRotation.transform(rotationVector)
         rotationVector.y = 0.0
-        rotationVector.mul(strength * BANK_STRENGTH)
+        rotationVector.mul(strength * bankStrength)
 
         physShip.transform.shipToWorldRotation.transform(
             moiTensor.transform(
@@ -342,16 +406,33 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
             physShip.mass * EurekaConfig.SERVER.linearMassScaling + EurekaConfig.SERVER.linearBaseMass
         )
 
-        oldSpeed = oldSpeed * (1 - s) + throttle * s // from -1 to 1.
+        // The throttle, or with it turned off how far W or S is held, like Eureka 1.6.4
+        val target = if (AddedFeatures.throttle) throttle else control.forwardImpulse.toDouble()
+        oldSpeed = oldSpeed * (1 - s) + target * s // from -1 to 1.
         val baseSpeed = EurekaConfig.SERVER.linearBaseSpeed
         var speed = oldSpeed * baseSpeed
+        // Turned off in added-features.toml, engines only get what VS says is in the water
+        val wetness = if (AddedFeatures.boatWaterContact) max(physShip.liquidOverlap, waterContact) else physShip.liquidOverlap
 
-        if (extraForceLinear != 0.0) {
+        if (extraForceLinear != 0.0 && !AddedFeatures.engineSpeedByMass) {
+            // Eureka 1.6.4's engine boost
+            var boost = max((extraForceLinear - EurekaConfig.SERVER.enginePowerLinear * ORIGINAL_ENGINE_BOOST_OFFSET) * ORIGINAL_ENGINE_BOOST, 0.0)
+            boost = extraForceLinear + boost + boost * boost * ORIGINAL_ENGINE_BOOST_EXPONENTIAL_POWER
+            val required = EurekaConfig.SERVER.waterContactRequiredForNonFlyingShipEngine
+            val waterFactor = if (required <= 0.0) 1.0 else min(1.0, wetness / required)
+            boost *= liftFraction + (1.0 - liftFraction) * waterFactor
+            boost /= scaledMass
+            speed += if (speed < 0) {
+                smoothingATanMax(EurekaConfig.SERVER.maxReverseSpeedFromEngines, boost * oldSpeed)
+            } else {
+                smoothingATanMax(ORIGINAL_MAX_SPEED_FROM_ENGINES, boost * oldSpeed)
+            }
+        } else if (extraForceLinear != 0.0) {
             // Each engine pushes a heavier ship less
             var push = runningEngines() * EurekaConfig.SERVER.engineSpeedPerEngine * massFactor(physShip.mass)
             // a ship with 50% lift would allow for 50% of power for ship not touching ground.
             val required = EurekaConfig.SERVER.waterContactRequiredForNonFlyingShipEngine
-            val waterFactor = if (required <= 0.0) 1.0 else min(1.0, max(physShip.liquidOverlap, waterContact) / required)
+            val waterFactor = if (required <= 0.0) 1.0 else min(1.0, wetness / required)
             push *= liftFraction + (1.0 - liftFraction) * waterFactor
             push /= EurekaConfig.SERVER.speedMassScale
 
@@ -373,7 +454,7 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
         val baseForwardVel = forwardVector.mul(speed)
         // Air drag grows with the square of speed. Past stableSpeed the ship pushes harder towards its speed, or drag
         // would hold small fast ships far under it.
-        val response = max(1.0, abs(speed) / max(EurekaConfig.SERVER.stableSpeed, 1.0))
+        val response = if (!AddedFeatures.highSpeedLevelling) 1.0 else max(1.0, abs(speed) / max(EurekaConfig.SERVER.stableSpeed, 1.0))
         val forwardForce = baseForwardVel.sub(velOrthogonalToPlayerUp).mul(scaledMass * response)
 
         return forwardForce
@@ -407,6 +488,7 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
     }
 
     var powerLinear = 0.0
+    var powerAngular = 0.0
     var anchors = 0 // Amount of anchors
         set(v) {
             field = v; deleteIfEmpty()
@@ -483,6 +565,15 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
         private const val WATER_CHECK_GRID = 5
         private val forcePerBalloon get() = EurekaConfig.SERVER.massPerBalloon * -GRAVITY
 
+        // Eureka 1.6.4's defaults, for the parts of it added-features.toml can bring back
+        const val ORIGINAL_ENGINE_POWER_ANGULAR = 1.0
+        private const val ORIGINAL_TURN_SPEED = 3.0
+        private const val ORIGINAL_BANK_STRENGTH = 1.5
+        private const val ORIGINAL_ENGINE_BOOST = 0.2
+        private const val ORIGINAL_ENGINE_BOOST_OFFSET = 2.5
+        private const val ORIGINAL_ENGINE_BOOST_EXPONENTIAL_POWER = 0.000001
+        private const val ORIGINAL_MAX_SPEED_FROM_ENGINES = 12.0
+
         private const val GRAVITY = -10.0
     }
 
@@ -490,10 +581,22 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
     override fun onServerTick() {
         extraForceLinear = powerLinear
         powerLinear = 0.0
+        extraForceAngular = powerAngular
+        powerAngular = 0.0
 
         useSimpleDrag()
-        measureWaterContact()
-        updateThrottle()
+        if (AddedFeatures.boatWaterContact) measureWaterContact() else waterContact = 0.0
+        if (AddedFeatures.throttle) {
+            updateThrottle()
+        } else {
+            throttleShown = Int.MIN_VALUE
+            if (cruiseChanged) {
+                cruiseChanged = false
+                seatedPlayer?.sendOverlayMessage(
+                    Component.translatable(if (isCruising) "hud.vs_eureka.start_cruising" else "hud.vs_eureka.stop_cruising")
+                )
+            }
+        }
 
 
         consumed = physConsumption * /* should be physics ticks based*/ 0.1f
@@ -576,7 +679,7 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
     @OptIn(GameTickOnly::class)
     private fun useSimpleDrag() {
         val ship = ship ?: return
-        val simple = helms > 0 && ship.inertiaData.mass > EurekaConfig.SERVER.noBlockDragAboveMass
+        val simple = AddedFeatures.noBlockDragOnBigShips && helms > 0 && ship.inertiaData.mass > EurekaConfig.SERVER.noBlockDragAboveMass
         if (simple == simpleDrag) return
         val drag = ship.dragController ?: return
         simpleDrag = simple

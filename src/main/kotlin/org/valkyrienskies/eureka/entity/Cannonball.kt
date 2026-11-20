@@ -21,7 +21,9 @@ class Cannonball : ThrowableItemProjectile {
 
     /** Each size of cannonball explodes twice as hard as the one before. */
     private val explosionPower: Float
-        get() = (item.item as? CannonballItem)?.size?.explosionPower ?: CannonballItem.Size.SMALL.explosionPower
+        get() = (item.item as? CannonballItem)?.size?.explosionPower
+            // TNT, fired while cannonballs are turned off, explodes like TNT
+            ?: if (item.`is`(net.minecraft.world.item.Items.TNT)) TNT_POWER else CannonballItem.Size.SMALL.explosionPower
 
     override fun tick() {
         super.tick()
@@ -38,5 +40,6 @@ class Cannonball : ThrowableItemProjectile {
 
     private companion object {
         const val MAX_AGE_TICKS = 600
+        const val TNT_POWER = 4.0f
     }
 }

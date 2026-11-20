@@ -81,7 +81,8 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
 
     /** Tells the player and returns true when the helm can't be used because a detacher holds its ship. */
     fun refuseWhileHeld(player: Player): Boolean {
-        if (!heldByDetacher) return false
+        // With Detachers turned off in added-features.toml nothing can let go, so held helms work again
+        if (!heldByDetacher || !org.valkyrienskies.mod.common.config.AddedFeatures.detacher) return false
         player.sendOverlayMessage(Component.translatable("info.vs_eureka.helm_held"))
         return true
     }

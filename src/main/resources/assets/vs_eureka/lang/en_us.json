@@ -81,6 +81,7 @@
   "gui.vs_eureka.wiring.cushion": "Cushion",
   "gui.vs_eureka.wiring.help_move": "WASD to fly, Space and Shift for up and down, scroll for speed",
   "gui.vs_eureka.wiring.help_look": "Right drag to look, left drag to rotate, Esc when done",
+  "message.vs_eureka.turned_off": "This is turned off on this server",
   "message.vs_eureka.cannon_aiming": "Aiming the cannon: look where it should fire, then let go of sneak",
   "message.vs_eureka.cannon_aiming_at": "Aiming the cannon: %s. Let go of sneak to keep it there",
   "message.vs_eureka.cannon_aimed": "Cannon aimed %s",

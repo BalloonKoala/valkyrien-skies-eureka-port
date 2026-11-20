@@ -1,5 +1,6 @@
 package org.valkyrienskies.eureka.wiring
 
+import org.valkyrienskies.mod.common.config.AddedFeatures
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
 import net.minecraft.core.BlockPos
@@ -68,7 +69,7 @@ object ShipWiring {
 
     /** Everything on the ship a key can set off: wireless buttons and cannons. */
     private fun wireablesOn(level: ServerLevel, ship: LoadedServerShip): List<BlockEntity> =
-        blockEntitiesOn(level, ship).filter { it is Wireable }
+        blockEntitiesOn(level, ship).filter { it is Wireable && (AddedFeatures.cannonWireToSeats || !it.isCannon) }
 
     /** The contact point of this button or cannon that really exists, null means the helm. */
     private fun liveContact(button: Wireable, contacts: List<WiringContact>): BlockPos? =
@@ -99,6 +100,7 @@ object ShipWiring {
             ?.takeIf { level.getLoadedShipManagingPos(pos)?.id == ship.id }
 
     private fun bindKey(player: ServerPlayer, payload: WiringBindPayload) {
+        if (!AddedFeatures.wiringScreen) return
         val ship = shipBeingEdited(player, payload.helm) ?: return
         if (payload.key.length > MAX_KEY_NAME_LENGTH) return
         button(player.level(), ship, payload.button)?.key = payload.key
@@ -106,6 +108,7 @@ object ShipWiring {
     }
 
     private fun connect(player: ServerPlayer, payload: WiringConnectPayload) {
+        if (!AddedFeatures.wiringScreen) return
         val ship = shipBeingEdited(player, payload.helm) ?: return
         val level = player.level()
         // A contact point has to be on this ship
@@ -133,6 +136,7 @@ object ShipWiring {
     }
 
     private fun onKeyPressed(player: ServerPlayer, key: String) {
+        if (!AddedFeatures.wiringScreen) return
         val vehicle = player.vehicle ?: return
         val level = player.level()
         val ship = level.getLoadedShipManagingPos(vehicle.blockPosition()) as? LoadedServerShip ?: return

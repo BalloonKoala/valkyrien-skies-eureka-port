@@ -113,6 +113,8 @@ object PlacedBlocks {
 
     /** True for a block no player placed. Those can't become part of a ship. */
     fun isWorldGenerated(level: ServerLevel, pos: BlockPos, state: BlockState): Boolean {
+        // Turned off in added-features.toml, any block can become a ship again
+        if (!org.valkyrienskies.mod.common.config.AddedFeatures.onlyPlayerPlacedBlocks) return false
         val data = data(level.getChunkAt(pos))
         if (data != null && data.positions.contains(pos.asLong())) return false
         return data?.strict == true || state.`is`(WORLD_GENERATED)

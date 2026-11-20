@@ -13,7 +13,8 @@ object CreativeTabs {
             .icon { ItemStack(EurekaBlocks.OAK_SHIP_HELM.get().asItem()) }
             .displayItems { _, output ->
                 EurekaItems.ITEMS.forEach {
-                    output.accept(it.get())
+                    // Items turned off in added-features.toml aren't shown
+                    if (org.valkyrienskies.eureka.util.TurnedOff.itemOn(it.get())) output.accept(it.get())
                 }
             }
             .build()

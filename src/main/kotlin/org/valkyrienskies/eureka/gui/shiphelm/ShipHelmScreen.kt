@@ -80,6 +80,8 @@ class ShipHelmScreen(handler: ShipHelmScreenMenu, playerInventory: Inventory, te
         disassembleButton.active = EurekaConfig.SERVER.allowDisassembly && isLookingAtShip
         alignButton.active = disassembleButton.active
         wiringButton.active = isLookingAtShip
+        // Turned off in added-features.toml
+        wiringButton.visible = org.valkyrienskies.mod.common.config.AddedFeatures.wiringScreen
     }
 
     override fun extractBackground(guiGraphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTicks: Float) {

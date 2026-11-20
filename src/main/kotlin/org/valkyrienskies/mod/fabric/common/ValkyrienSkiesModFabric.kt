@@ -90,6 +90,7 @@ class ValkyrienSkiesModFabric : ModInitializer {
         if (hasInitialized.getAndSet(true)) return
 
         org.valkyrienskies.mod.common.world.ShipTerrainTickets.register()
+        org.valkyrienskies.mod.common.config.AddedFeaturesSetup.register()
 
         ConfigRegistry.INSTANCE.apply {
             register(ValkyrienSkiesMod.MOD_ID, ModConfig.Type.SERVER, VSConfigUpdater.CORE_SERVER_SPEC, "valkyrienskies/vs-core-server.toml")
@@ -311,6 +312,8 @@ class ValkyrienSkiesModFabric : ModInitializer {
      * Only run on client
      */
     private fun onInitializeClient() {
+        org.valkyrienskies.mod.client.config.AddedFeaturesClient.register()
+
         // Register the ship mounting entity renderer
         EntityRendererRegistry.register(
             ValkyrienSkiesMod.SHIP_MOUNTING_ENTITY_TYPE

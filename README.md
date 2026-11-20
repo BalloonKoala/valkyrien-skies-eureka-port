@@ -252,6 +252,15 @@ Coming from a **Paper 26.x** server? The mod copies the settings Fabric needs on
 ### 👋 Welcome message
 Everyone gets a quick hello with the credits and a Discord link when they join.
 
+### 🎛️ Turn anything off
+Everything this port adds can be switched off in `config/valkyrienskies/added-features.toml`. The server makes it by itself on the first start, with everything on. Set a line to `false` and save: the server picks it up within a couple of seconds and tells every player. Recipes change on `/reload` or a restart.
+
+- **Blocks and items** (Cannon, cannonballs, Wireless Buttons, Detacher, Electric Weight): turned off they have no recipe, aren't in the creative tab or JEI, and can't be placed. Ones already built stop working but can still be broken and picked up. With cannonballs off, cannons fire TNT again.
+- **Features** like the Info screen, only your own blocks becoming ships, the throttle, the Wiring screen, cushion seats, Pause All, elytra takeoff, the clean-up commands and the welcome message each have a switch too.
+- **Movement:** turning off the new engine speed, turning, throttle or levelling brings back how Eureka 1.6.4 did it, cruise control included.
+
+Every line in the file says what it does.
+
 ## 🧱 Every block
 
 <img src="docs/images/all-blocks.png" alt="Every block in the mod: 12 wireless buttons, 8 ship helms, anchor, engine, two cannons, detacher, electric weight off and on, ballast, floater and 17 balloons" width="100%">

@@ -53,6 +53,7 @@ This project is a modified version of **Valkyrien Skies 2.4.11** and **VS Eureka
 - Wiring screen in the helm, with key binds and contact points
 - Automatic import of worlds made by Paper 26.x
 - Welcome message with credits
+- `config/valkyrienskies/added-features.toml` turns any added block, item or feature off, bringing back the original behaviour
 
 ## Removed
 - The warning about known issues when joining, and its config option

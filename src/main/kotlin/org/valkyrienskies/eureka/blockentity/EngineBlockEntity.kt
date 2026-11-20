@@ -66,7 +66,7 @@ class EngineBlockEntity(pos: BlockPos, state: BlockState) :
         hasShipControl = if (shipControl != null) 1 else 0
         enginesPaused = if (shipControl?.enginesPaused == true) 1 else 0
         // Fuel and heat stay exactly as they are until the engines get resumed
-        if (shipControl?.enginesPaused == true) return
+        if (shipControl?.enginesPaused == true && org.valkyrienskies.mod.common.config.AddedFeatures.pauseAllEngines) return
 
         val isPowered = level!!.hasNeighborSignal(blockPos)
         if (EurekaConfig.SERVER.engineRedstoneBehaviorPause && isPowered) return
@@ -117,6 +117,8 @@ class EngineBlockEntity(pos: BlockPos, state: BlockState) :
                     EurekaConfig.SERVER.enginePowerLinear,
                     effectiveHeat,
                 )
+                // Eureka 1.6.4's turning power, only used while turningNeedsEngines is off in added-features.toml
+                eurekaShipControl.powerAngular += effectiveHeat.toDouble() * EurekaShipControl.ORIGINAL_ENGINE_POWER_ANGULAR
 
                 heat -= eurekaShipControl.consumed
             }
@@ -131,6 +133,7 @@ class EngineBlockEntity(pos: BlockPos, state: BlockState) :
      * Pauses or resumes every engine on this ship.
      */
     fun toggleEnginesPaused(player: Player) {
+        if (!org.valkyrienskies.mod.common.config.AddedFeatures.pauseAllEngines) return org.valkyrienskies.eureka.util.TurnedOff.tell(player)
         val control = ship?.getAttachment(EurekaShipControl::class.java) ?: return
         control.enginesPaused = !control.enginesPaused
         player.sendOverlayMessage(

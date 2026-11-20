@@ -27,7 +27,10 @@ object EurekaMod {
         org.valkyrienskies.eureka.block.DetacherBlock.registerCrouchToOpen()
         org.valkyrienskies.eureka.block.DetacherBlock.registerPushes()
         net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
-            org.valkyrienskies.eureka.command.BuildCommand.register(dispatcher)
+            // Commands are registered at start and on /reload, the switch is read then
+            if (org.valkyrienskies.mod.common.config.AddedFeatures.buildCommands) {
+                org.valkyrienskies.eureka.command.BuildCommand.register(dispatcher)
+            }
         }
         ValkyrienSkiesMod.vsCore.registerAttachment(EurekaShipControl::class.java)
     }

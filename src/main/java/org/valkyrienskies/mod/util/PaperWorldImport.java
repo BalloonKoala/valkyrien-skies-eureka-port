@@ -27,6 +27,8 @@ public final class PaperWorldImport {
     }
 
     public static void importIfNeeded(final Path worldFolder) {
+        // Turned off in added-features.toml
+        if (!org.valkyrienskies.mod.common.config.AddedFeatures.getPaperWorldImport()) return;
         final Path fabricData = worldFolder.resolve("data/minecraft");
         final Path paperData = worldFolder.resolve("dimensions/minecraft/overworld/data/minecraft");
         if (Files.exists(fabricData.resolve(WORLD_GEN_SETTINGS)) || !Files.exists(paperData.resolve(WORLD_GEN_SETTINGS))) {

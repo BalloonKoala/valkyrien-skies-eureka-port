@@ -1,5 +1,6 @@
 package org.valkyrienskies.mod.mixin.feature.entity_movement_packets;
 
+import org.valkyrienskies.mod.common.config.AddedFeatures;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.client.Minecraft;
@@ -57,7 +58,8 @@ public abstract class MixinLocalPlayer extends Entity implements IEntityDragging
             if (realArg instanceof ServerboundMovePlayerPacket movePacket) {
                 // Not while gliding, the server ends a glide as soon as it hears the player is on the ground
                 final boolean isOnGround = movePacket.isOnGround() ||
-                    (getDraggingInformation().isEntityBeingDraggedByAShip() && !((LocalPlayer) (Object) this).isFallFlying());
+                    (getDraggingInformation().isEntityBeingDraggedByAShip()
+                        && !(AddedFeatures.getElytraTakeoff() && ((LocalPlayer) (Object) this).isFallFlying()));
                 if (movePacket.hasPosition() && movePacket.hasRotation()) {
                     //posrot
                     realArg = new ServerboundMovePlayerPacket.PosRot(movePacket.getX(0.0), movePacket.getY(0.0), movePacket.getZ(0.0), movePacket.getYRot(0.0f), movePacket.getXRot(0.0f), isOnGround, movePacket.horizontalCollision());
@@ -86,7 +88,7 @@ public abstract class MixinLocalPlayer extends Entity implements IEntityDragging
         target = "Lnet/minecraft/client/player/LocalPlayer;tryToStartFallFlying()Z"))
     private boolean vs$takeOffFromShip(final LocalPlayer player, final Operation<Boolean> original) {
         final boolean started = original.call(player);
-        if (started && getDraggingInformation().isEntityBeingDraggedByAShip()) {
+        if (started && AddedFeatures.getElytraTakeoff() && getDraggingInformation().isEntityBeingDraggedByAShip()) {
             player.connection.send(new ServerboundMovePlayerPacket.StatusOnly(false, player.horizontalCollision));
         }
         return started;

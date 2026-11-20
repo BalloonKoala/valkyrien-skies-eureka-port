@@ -19,6 +19,7 @@ object WelcomeMessage {
 
     @JvmStatic
     fun onPlayerJoin(player: ServerPlayer) {
+        if (!org.valkyrienskies.mod.common.config.AddedFeatures.welcomeMessage) return
         val eureka = link("info.vs_eureka.welcome.eureka", EUREKA_URL)
         val discord = link("info.vs_eureka.welcome.discord", DISCORD_URL)
 
